@@ -1,0 +1,16 @@
+{
+  "name": "browser-toolbox",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Six no-upload, fully client-side browser tools (QR, EXIF cleaner, passphrase, CSV<->JSON, palette, cron) as an installable PWA.",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "piexifjs": "^1.0.6",
+    "qrcode-generator": "^2.0.4",
+    "vitest": "^4.1.9"
+  }
+}

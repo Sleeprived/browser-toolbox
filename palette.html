@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Color Palette Extractor — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Color Palette Extractor</h1>
+    <p class="lead">Pull the dominant colors out of any image. Export them as hex, CSS variables, or JSON.</p>
+
+    <div class="card">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Drop an image here or press Enter to choose a file">
+        <p><strong>Drop an image here</strong> or click to choose.</p>
+        <p class="lead">Any common image format, up to 25&nbsp;MB. Processed entirely on your device.</p>
+        <input type="file" id="file" accept="image/*" class="hidden" />
+      </div>
+      <div class="row">
+        <div>
+          <label for="count">Colors: <span id="count-val">6</span></label>
+          <input type="range" id="count" min="2" max="12" value="6" />
+        </div>
+      </div>
+    </div>
+
+    <div id="error" class="msg error hidden"></div>
+
+    <div id="result" class="card hidden">
+      <div class="preview">
+        <img id="preview-img" alt="Uploaded image preview" />
+        <div>
+          <div class="swatches" id="swatches"></div>
+          <p id="copied" class="lead hidden" aria-live="polite"></p>
+        </div>
+      </div>
+      <h2>Export</h2>
+      <div class="btn-row">
+        <button class="btn secondary" type="button" data-fmt="hex">Hex list</button>
+        <button class="btn secondary" type="button" data-fmt="css">CSS variables</button>
+        <button class="btn secondary" type="button" data-fmt="json">JSON</button>
+      </div>
+      <pre class="out" id="export-out"></pre>
+    </div>
+
+    <canvas id="work" class="hidden"></canvas>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Your image is read on your device only. Nothing is uploaded; click a swatch to copy its hex.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/palette/palette-ui.js"></script>
+</body>
+</html>

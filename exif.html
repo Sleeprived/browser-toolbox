@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>EXIF Cleaner — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>EXIF Cleaner</h1>
+    <p class="lead">Remove GPS location, camera, and timestamp metadata from JPEG and PNG photos. Nothing is uploaded.</p>
+
+    <div class="card">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Drop photos here or press Enter to choose files">
+        <p><strong>Drop photos here</strong> or click to choose.</p>
+        <p class="lead">JPEG and PNG, up to 25&nbsp;MB each. You can select several at once.</p>
+        <input type="file" id="file" accept="image/jpeg,image/png" multiple class="hidden" />
+      </div>
+    </div>
+
+    <div id="error" class="msg error hidden"></div>
+    <div id="results"></div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Photos are processed entirely on your device and never uploaded. Camera orientation is preserved so cleaned photos are not rotated.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script src="assets/vendor/piexif.js"></script>
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/exif/exif-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+// Service worker for Browser Toolbox.
+// Precaches the app's own static assets for offline use. The cache name is
+// VERSIONED: bump CACHE_VERSION on each deploy so old caches are purged and
+// users receive the new build. Only the app's own assets are cached — no
+// third-party requests are ever made.
+
+const CACHE_VERSION = 'v2';
+const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
+
+// Paths are relative to the service worker's location (the site root), so this
+// works correctly under a GitHub Pages project subpath.
+const ASSETS = [
+  '.',
+  'index.html',
+  'qr.html',
+  'exif.html',
+  'passphrase.html',
+  'csv.html',
+  'palette.html',
+  'cron.html',
+  'manifest.webmanifest',
+  'assets/css/style.css',
+  'src/shared/page.js',
+  'src/cron/cron.js',
+  'src/cron/cron-ui.js',
+  'src/csv/csv.js',
+  'src/csv/csv-ui.js',
+  'src/passphrase/generate.js',
+  'src/passphrase/strength.js',
+  'src/passphrase/common-passwords.js',
+  'src/passphrase/pass-ui.js',
+  'assets/data/eff_wordlist.js',
+  'src/qr/payloads.js',
+  'src/qr/matrix.js',
+  'src/qr/quality.js',
+  'src/qr/qr-ui.js',
+  'assets/vendor/qrcode-generator.js',
+  'src/exif/jpeg.js',
+  'src/exif/png.js',
+  'src/exif/exif-ui.js',
+  'assets/vendor/piexif.js',
+  'src/palette/quantize.js',
+  'src/palette/palette-ui.js',
+  'assets/img/icon-192.png',
+  'assets/img/icon-512.png',
+  'assets/img/icon-maskable-512.png',
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      // Resolve each asset against the SW scope; ignore individual failures so a
+      // single missing file cannot break the whole install.
+      Promise.all(
+        ASSETS.map((path) => {
+          const url = new URL(path, self.registration.scope).href;
+          return cache.add(url).catch(() => null);
+        }),
+      ),
+    ).then(() => self.skipWaiting()),
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((k) => k.startsWith('browser-toolbox-') && k !== CACHE_NAME)
+          .map((k) => caches.delete(k)),
+      ),
+    ).then(() => self.clients.claim()),
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // never touch cross-origin
+
+  // Cache-first, falling back to network; cache successful same-origin GETs.
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req)
+        .then((resp) => {
+          if (resp && resp.ok && resp.type === 'basic') {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+          }
+          return resp;
+        })
+        .catch(() => {
+          // Offline and not cached: for navigations, serve the home page.
+          if (req.mode === 'navigate') {
+            return caches.match(new URL('index.html', self.registration.scope).href);
+          }
+          return Response.error();
+        });
+    }),
+  );
+});

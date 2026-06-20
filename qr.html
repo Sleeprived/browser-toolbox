@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>QR Code Studio — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>QR Code Studio</h1>
+    <p class="lead">Create QR codes for text, links, WiFi, contacts, email, SMS, map locations, and phone numbers. Generated entirely in your browser.</p>
+
+    <div class="card">
+      <label for="type">QR type</label>
+      <select id="type">
+        <option value="text">Text / URL</option>
+        <option value="wifi">WiFi network</option>
+        <option value="vcard">Contact card (vCard)</option>
+        <option value="email">Email</option>
+        <option value="sms">SMS / text message</option>
+        <option value="geo">Map location</option>
+        <option value="tel">Phone number</option>
+      </select>
+
+      <div id="form-text" class="qr-form">
+        <label for="text-val">Text or link</label>
+        <input type="text" id="text-val" value="https://example.com" autocomplete="off" />
+      </div>
+
+      <div id="form-wifi" class="qr-form hidden">
+        <label for="wifi-ssid">Network name (SSID)</label>
+        <input type="text" id="wifi-ssid" autocomplete="off" />
+        <label for="wifi-enc">Security</label>
+        <select id="wifi-enc">
+          <option value="WPA">WPA / WPA2</option>
+          <option value="WEP">WEP</option>
+          <option value="nopass">None (open)</option>
+        </select>
+        <label for="wifi-pass">Password</label>
+        <input type="text" id="wifi-pass" autocomplete="off" />
+        <div class="check"><input type="checkbox" id="wifi-hidden" /><label for="wifi-hidden">Hidden network</label></div>
+      </div>
+
+      <div id="form-vcard" class="qr-form hidden">
+        <label for="vc-name">Name</label>
+        <input type="text" id="vc-name" autocomplete="off" />
+        <label for="vc-org">Organization</label>
+        <input type="text" id="vc-org" autocomplete="off" />
+        <label for="vc-phone">Phone</label>
+        <input type="text" id="vc-phone" autocomplete="off" />
+        <label for="vc-email">Email</label>
+        <input type="text" id="vc-email" autocomplete="off" />
+      </div>
+
+      <div id="form-email" class="qr-form hidden">
+        <label for="em-to">Email address</label>
+        <input type="text" id="em-to" autocomplete="off" placeholder="someone@example.com" />
+        <label for="em-subject">Subject (optional)</label>
+        <input type="text" id="em-subject" autocomplete="off" />
+        <label for="em-body">Message (optional)</label>
+        <textarea id="em-body"></textarea>
+      </div>
+
+      <div id="form-sms" class="qr-form hidden">
+        <label for="sms-number">Phone number</label>
+        <input type="text" id="sms-number" autocomplete="off" placeholder="+1 555 123 4567" />
+        <label for="sms-message">Message (optional)</label>
+        <textarea id="sms-message"></textarea>
+      </div>
+
+      <div id="form-geo" class="qr-form hidden">
+        <div class="row">
+          <div>
+            <label for="geo-lat">Latitude</label>
+            <input type="text" id="geo-lat" inputmode="decimal" autocomplete="off" placeholder="40.4461" />
+          </div>
+          <div>
+            <label for="geo-lng">Longitude</label>
+            <input type="text" id="geo-lng" inputmode="decimal" autocomplete="off" placeholder="-79.9822" />
+          </div>
+        </div>
+      </div>
+
+      <div id="form-tel" class="qr-form hidden">
+        <label for="tel-number">Phone number</label>
+        <input type="text" id="tel-number" autocomplete="off" placeholder="+1 555 867 5309" />
+      </div>
+
+      <label for="ecl">Error correction</label>
+      <select id="ecl">
+        <option value="L">Low (L)</option>
+        <option value="M" selected>Medium (M)</option>
+        <option value="Q">Quartile (Q)</option>
+        <option value="H">High (H)</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h2>Appearance</h2>
+      <div class="row">
+        <div>
+          <label for="fg">Code color</label>
+          <input type="color" id="fg" value="#000000" />
+        </div>
+        <div>
+          <label for="bg">Background</label>
+          <input type="color" id="bg" value="#ffffff" />
+        </div>
+        <div>
+          <label for="size">Download size</label>
+          <select id="size">
+            <option value="256">256 px</option>
+            <option value="512" selected>512 px</option>
+            <option value="1024">1024 px</option>
+          </select>
+        </div>
+      </div>
+      <label for="margin">Quiet-zone margin: <span id="margin-val">4</span> modules</label>
+      <input type="range" id="margin" min="1" max="10" value="4" />
+      <div id="color-warn" class="msg warn hidden"></div>
+    </div>
+
+    <div id="error" class="msg error hidden"></div>
+
+    <div id="result" class="card hidden">
+      <div class="preview">
+        <canvas id="canvas" width="300" height="300" aria-label="QR code preview"></canvas>
+        <div>
+          <div class="btn-row">
+            <button class="btn" type="button" id="dl-png">Download PNG</button>
+            <button class="btn secondary" type="button" id="dl-svg">Download SVG</button>
+            <button class="btn secondary" type="button" id="copy-img">Copy image</button>
+          </div>
+          <p id="copied" class="lead hidden" aria-live="polite"></p>
+          <p id="capacity" class="lead"></p>
+          <label for="payload">Encoded text</label>
+          <pre class="out" id="payload"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Your QR codes are built entirely in your browser. Nothing you enter is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script src="assets/vendor/qrcode-generator.js"></script>
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/qr/qr-ui.js"></script>
+</body>
+</html>

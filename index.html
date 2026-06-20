@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="description" content="Six private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, CSV/JSON, color palettes, cron. Everything runs in your browser." />
+  <meta name="theme-color" content="#15171c" />
+  <title>Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript>
+      <div class="msg error">These tools run entirely in your browser and require JavaScript to be enabled.</div>
+    </noscript>
+
+    <h1>Browser Toolbox</h1>
+    <p class="lead">Six handy tools that run entirely in your browser.</p>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span><strong>100% private.</strong> Nothing you type or drop here is ever uploaded. No account, no tracking, works offline once loaded.</span>
+    </div>
+
+    <div class="tool-grid">
+      <a class="tool-card" href="qr.html">
+        <div class="t">QR Code Studio</div>
+        <div class="d">Make QR codes for text, links, WiFi logins, and contact cards. Download PNG or SVG.</div>
+      </a>
+      <a class="tool-card" href="exif.html">
+        <div class="t">EXIF Cleaner</div>
+        <div class="d">Strip GPS, camera, and timestamp metadata from JPEG &amp; PNG photos. No upload.</div>
+      </a>
+      <a class="tool-card" href="passphrase.html">
+        <div class="t">Passphrase Generator</div>
+        <div class="d">Strong diceware passphrases plus an offline password strength meter.</div>
+      </a>
+      <a class="tool-card" href="csv.html">
+        <div class="t">CSV &#8646; JSON Workbench</div>
+        <div class="d">View, sort, clean, and convert CSV and JSON in a table. Nothing leaves the page.</div>
+      </a>
+      <a class="tool-card" href="palette.html">
+        <div class="t">Color Palette Extractor</div>
+        <div class="d">Pull the dominant colors from any image. Export as hex, CSS variables, or JSON.</div>
+      </a>
+      <a class="tool-card" href="cron.html">
+        <div class="t">Cron Explainer</div>
+        <div class="d">Translate a cron schedule to plain English and preview its next run times.</div>
+      </a>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    Runs entirely in your browser &middot; no uploads &middot; no accounts &middot; host your own copy
+  </footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+</body>
+</html>

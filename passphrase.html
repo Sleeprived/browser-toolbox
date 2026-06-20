@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Passphrase Generator — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Passphrase Generator</h1>
+    <p class="lead">Memorable, strong passphrases from the EFF diceware wordlist &mdash; generated with your browser's secure randomness.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="words">Words: <span id="words-val">6</span></label>
+          <input type="range" id="words" min="4" max="8" value="6" />
+        </div>
+        <div>
+          <label for="sep">Separator</label>
+          <select id="sep">
+            <option value="-">hyphen ( - )</option>
+            <option value=".">dot ( . )</option>
+            <option value="_">underscore ( _ )</option>
+            <option value=" ">space (  )</option>
+          </select>
+        </div>
+      </div>
+      <div class="check"><input type="checkbox" id="cap" /><label for="cap">Capitalize each word</label></div>
+      <div class="check"><input type="checkbox" id="digit" /><label for="digit">Append a random digit</label></div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="gen">Generate</button>
+        <button class="btn secondary" type="button" id="copy">Copy</button>
+      </div>
+      <label for="out">Your passphrase</label>
+      <input type="text" id="out" class="mono" readonly />
+      <p id="entropy" class="lead"></p>
+      <div id="copied" class="msg ok hidden">Copied to clipboard.</div>
+    </div>
+
+    <h2>Password strength meter</h2>
+    <div class="card">
+      <label for="pw">Type or paste a password to rate it (checked entirely offline)</label>
+      <input type="text" id="pw" class="mono" autocomplete="off" spellcheck="false" />
+      <div class="meter"><span id="meter-bar"></span></div>
+      <p id="strength" class="lead">&nbsp;</p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Nothing you generate or type is stored, logged, or sent anywhere. Refreshing the page clears everything.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    Wordlist: <a href="https://www.eff.org/dice" rel="noopener">EFF Large Wordlist</a> (CC BY 3.0 US) &middot; runs entirely in your browser
+  </footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/passphrase/pass-ui.js"></script>
+</body>
+</html>
