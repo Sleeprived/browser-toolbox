@@ -16,6 +16,7 @@ const copiedMsg = document.getElementById('copied');
 const pwInput = document.getElementById('pw');
 const meterBar = document.getElementById('meter-bar');
 const strengthEl = document.getElementById('strength');
+const revealBtn = document.getElementById('reveal');
 
 function currentOpts() {
   return {
@@ -45,13 +46,23 @@ genBtn.addEventListener('click', generate);
 
 copyBtn.addEventListener('click', async () => {
   if (!outField.value) return;
+  let ok = false;
   try {
     await navigator.clipboard.writeText(outField.value);
+    ok = true;
   } catch {
     outField.select();
-    document.execCommand && document.execCommand('copy');
+    try { ok = !!(document.execCommand && document.execCommand('copy')); } catch { ok = false; }
   }
+  copiedMsg.textContent = ok ? 'Copied to clipboard' : 'Press Ctrl+C to copy';
   copiedMsg.classList.remove('hidden');
+});
+
+revealBtn.addEventListener('click', () => {
+  const showing = pwInput.type === 'text';
+  pwInput.type = showing ? 'password' : 'text';
+  revealBtn.textContent = showing ? 'Show' : 'Hide';
+  revealBtn.setAttribute('aria-pressed', String(!showing));
 });
 
 const STRENGTH_COLORS = {
@@ -69,6 +80,8 @@ function updateStrength() {
   const pct = Math.max(0, Math.min(100, (r.bits / 100) * 100));
   meterBar.style.width = pct + '%';
   meterBar.style.background = STRENGTH_COLORS[r.label] || 'var(--text-dim)';
+  meterBar.setAttribute('aria-valuenow', String(Math.round(pct)));
+  meterBar.setAttribute('aria-valuetext', pw.length === 0 ? 'no password entered' : `${r.label}, about ${r.bits} bits`);
   if (pw.length === 0) {
     strengthEl.textContent = ' ';
   } else {

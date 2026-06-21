@@ -11,6 +11,7 @@ import {
   PENALTY_IDENTICAL,
   PENALTY_SEQUENTIAL,
   PENALTY_COMMON,
+  PENALTY_REPEAT,
 } from '../src/passphrase/strength.js';
 
 const WL = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
@@ -132,11 +133,38 @@ describe('estimateStrength', () => {
   });
 
   it('maps bits to labels at the boundaries', () => {
-    expect(labelForBits(0)).toBe('—');
+    expect(labelForBits(0, false)).toBe('—');   // empty input
+    expect(labelForBits(0)).toBe('Very weak');  // non-empty, zero bits
     expect(labelForBits(20)).toBe('Very weak');
     expect(labelForBits(35)).toBe('Weak');
     expect(labelForBits(50)).toBe('Fair');
     expect(labelForBits(70)).toBe('Strong');
     expect(labelForBits(90)).toBe('Very strong');
+  });
+
+  it('does not flag alternating patterns as a sequential run', () => {
+    const r = estimateStrength('ababab');
+    expect(r.penalties).not.toContain('sequential run');
+  });
+
+  it('still flags a true ascending run', () => {
+    expect(estimateStrength('abcdef').penalties).toContain('sequential run');
+  });
+
+  it('penalizes a doubled dictionary word so it cannot read as Strong', () => {
+    const r = estimateStrength('passwordpassword'); // "password" x2; not in common list as a whole
+    expect(r.penalties).toContain('repeated word');
+    expect(['Strong', 'Very strong']).not.toContain(r.label);
+  });
+
+  it('does NOT add a repeated-word penalty to an all-identical string', () => {
+    // "aaaaaa" is covered by the identical-character penalty only — the
+    // repeated-word check must not double-count it.
+    expect(estimateStrength('aaaaaa').penalties).not.toContain('repeated word');
+  });
+
+  it('labels a non-empty low-entropy password as Very weak, not em-dash', () => {
+    const r = estimateStrength('aaaaaa'); // identical → ~10 bits
+    expect(r.label).toBe('Very weak');
   });
 });

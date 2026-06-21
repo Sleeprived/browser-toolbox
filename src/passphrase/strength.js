@@ -14,6 +14,7 @@ export const PENALTY_SEQUENTIAL = 12; // an ascending/descending run of length >
 export const PENALTY_COMMON = 30; // exact match against the bundled common-password list
 export const PENALTY_COMMON_AFFIX = 26; // a common word + substitutions/affixes (P@ssw0rd, password1!)
 export const PENALTY_KEYBOARD = 14; // a keyboard-adjacency walk (qwerty, asdf, 1234)
+export const PENALTY_REPEAT = 16; // a short string repeated to fill length (e.g. "abcabcabc")
 
 // Bit caps applied when the password is essentially a known word: real guessing
 // cost is tiny regardless of length/charset, so the charset-entropy estimate is
@@ -44,14 +45,31 @@ function allIdentical(password) {
 
 function hasSequentialRun(password, minRun = 3) {
   let run = 1;
+  let dir = 0; // 0 = unknown, 1 = ascending, -1 = descending
   for (let i = 1; i < password.length; i++) {
     const diff = password.charCodeAt(i) - password.charCodeAt(i - 1);
-    if (diff === 1 || diff === -1) {
+    if ((diff === 1 || diff === -1) && (dir === 0 || dir === diff)) {
+      dir = diff;
       run += 1;
       if (run >= minRun) return true;
+    } else if (diff === 1 || diff === -1) {
+      dir = diff;
+      run = 2; // start a fresh run in the new direction from the pair
     } else {
+      dir = 0;
       run = 1;
     }
+  }
+  return false;
+}
+
+function hasRepeatedUnit(password) {
+  // True if the whole string is a unit repeated >= 2 times (unit length >= 3).
+  const n = password.length;
+  for (let unit = 3; unit <= n / 2; unit++) {
+    if (n % unit !== 0) continue;
+    const slice = password.slice(0, unit);
+    if (slice.repeat(n / unit) === password) return true;
   }
   return false;
 }
@@ -97,8 +115,8 @@ function commonMatch(password) {
   return null;
 }
 
-export function labelForBits(bits) {
-  if (bits <= 0) return '—';
+export function labelForBits(bits, hasInput = true) {
+  if (!hasInput) return '—';
   if (bits < 28) return 'Very weak';
   if (bits < 40) return 'Weak';
   if (bits < 60) return 'Fair';
@@ -129,6 +147,11 @@ export function estimateStrength(password) {
     penalties.push('keyboard pattern');
   }
 
+  if (!allIdentical(password) && hasRepeatedUnit(password)) {
+    bits -= PENALTY_REPEAT;
+    penalties.push('repeated word');
+  }
+
   const common = commonMatch(password);
   if (common === 'exact') {
     bits = Math.min(bits - PENALTY_COMMON, CAP_COMMON);
@@ -141,5 +164,5 @@ export function estimateStrength(password) {
   if (bits < 0) bits = 0;
   bits = Math.round(bits * 10) / 10;
 
-  return { bits, label: labelForBits(bits), length: password.length, classSize, penalties };
+  return { bits, label: labelForBits(bits, true), length: password.length, classSize, penalties };
 }

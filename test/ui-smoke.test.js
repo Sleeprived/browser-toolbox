@@ -57,6 +57,15 @@ describe('passphrase UI', () => {
     pw.dispatchEvent(new window.Event('input'));
     expect(document.getElementById('strength').textContent).toMatch(/Very weak/);
   });
+
+  it('reveal toggle flips the password field type', async () => {
+    loadBody('passphrase.html');
+    await import('../src/passphrase/pass-ui.js');
+    const pw = document.getElementById('pw');
+    expect(pw.type).toBe('password');
+    document.getElementById('reveal').dispatchEvent(new window.Event('click'));
+    expect(pw.type).toBe('text');
+  });
 });
 
 describe('csv UI', () => {
