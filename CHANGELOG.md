@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-06-20 — v1.1.0
+
+### Added
+- **Encode / Decode Multitool** (`encode.html`): convert text to and from
+  Base64, Hex, URL encoding, and HTML entities — encode and decode directions
+  for all four codecs, no file size limit beyond browser memory.
+- **JWT Decoder** (`jwt.html`): Base64url-decode the header and payload of any
+  JSON Web Token; verify HS256/384/512 signatures using the Web Crypto API
+  (secret never stored); RS256/ES256 decoded structurally.
+- **Image Resizer** (`image.html`): resize and compress JPEG, PNG, and WebP
+  images via an off-screen canvas; proportional height; quality slider for JPEG
+  and WebP; EXIF orientation auto-corrected before drawing.
+- **Service worker bumped to v3** — precaches `encode.html`, `jwt.html`,
+  `image.html`, and all six new src modules for offline use.
+
+### Fixed / hardened (v1.0 → v1.1 patch pass)
+- **QR**: non-ASCII (UTF-8) characters now encode correctly; previously
+  multi-byte codepoints could overflow the payload length check.
+- **CSV**: handles BOM at the start of UTF-8 files; tolerates ragged rows
+  (fewer columns than the header); drop-column index re-mapped correctly after
+  previous drops.
+- **Cron**: leap-day schedules (Feb 29) no longer hang — impossible
+  day/month combinations are detected instantly and report "no upcoming runs".
+- **EXIF**: JFIF-only files (no EXIF IFD) now process correctly; the JFIF APP0
+  marker is preserved as an allowed color-space marker.
+- **Passphrase**: entropy display now matches actual word-count selection;
+  copy-to-clipboard fall-back works in non-secure contexts.
+- **Palette**: fully-transparent images show "No opaque pixels found" instead
+  of an empty result panel; `color-mix()` backgrounds have solid fallbacks.
+- **SW stale-while-revalidate**: navigations are served from cache immediately;
+  the new build is fetched in the background and served on the next load
+  (documented in Troubleshooting).
+
+### Accessibility sweep
+- EXIF and palette drop zones are keyboard-operable (focusable; Enter/Space
+  opens the file picker).
+- Skip-link, `id="main"`, and dual `theme-color` meta tags added to all pages.
+
 ## 2026-06-20 — QR Code Studio upgrade
 
 ### Added

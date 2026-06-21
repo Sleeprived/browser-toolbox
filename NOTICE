@@ -1,0 +1,7 @@
+Browser Toolbox bundles the EFF Large Wordlist for passphrase generation.
+"EFF Large Wordlist" by the Electronic Frontier Foundation is licensed under
+CC BY 3.0 US (https://creativecommons.org/licenses/by/3.0/us/).
+
+Vendored libraries:
+- qrcode-generator (MIT) — Kazuhiko Arase
+- piexifjs (MIT) — hMatoba
