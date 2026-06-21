@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <title>JWT Decoder — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>JWT Decoder &amp; Inspector</h1>
+    <p class="lead">Decode and inspect JSON Web Tokens entirely in your browser. Optionally verify HS256/384/512 signatures with your secret. Nothing is uploaded.</p>
+
+    <div class="card">
+      <label for="jwt-in">Paste a JWT</label>
+      <textarea id="jwt-in" class="mono" placeholder="eyJhbGciOi..."></textarea>
+    </div>
+
+    <div id="jwt-error" class="msg error hidden" role="alert"></div>
+
+    <div id="jwt-result" class="card hidden">
+      <h2>Header</h2>
+      <pre class="out" id="jwt-header" aria-live="polite"></pre>
+      <h2>Payload</h2>
+      <pre class="out" id="jwt-payload" aria-live="polite"></pre>
+      <h2>Claims</h2>
+      <ul id="jwt-claims" class="next-runs" aria-live="polite"></ul>
+      <div id="jwt-flags" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <h2>Verify signature (HMAC only)</h2>
+      <p class="lead">Supported: HS256, HS384, HS512. Asymmetric algorithms (RS*, ES*) are out of scope.</p>
+      <label for="jwt-secret">Secret</label>
+      <input type="password" id="jwt-secret" autocomplete="off" />
+      <div class="btn-row">
+        <button class="btn" type="button" id="jwt-verify">Verify</button>
+      </div>
+      <p id="jwt-verdict" class="lead" aria-live="polite"></p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Tokens and secrets are processed only in your browser and never uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/jwt/jwt-ui.js"></script>
+</body>
+</html>

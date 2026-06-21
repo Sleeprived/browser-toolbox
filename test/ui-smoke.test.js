@@ -122,3 +122,27 @@ describe('encode UI', () => {
     expect(document.getElementById('enc-error').classList.contains('hidden')).toBe(false);
   });
 });
+
+describe('jwt UI', () => {
+  it('decodes a pasted token into header and payload', async () => {
+    loadBody('jwt.html');
+    await import('../src/jwt/jwt-ui.js');
+    // {"alg":"HS256","typ":"JWT"} . {"sub":"1","name":"x"} . sig
+    const t = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IngifQ.sig';
+    const inEl = document.getElementById('jwt-in');
+    inEl.value = t;
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('jwt-header').textContent).toContain('HS256');
+    expect(document.getElementById('jwt-payload').textContent).toContain('"sub"');
+    expect(document.getElementById('jwt-result').classList.contains('hidden')).toBe(false);
+  });
+
+  it('shows an error for a non-JWT string', async () => {
+    loadBody('jwt.html');
+    await import('../src/jwt/jwt-ui.js');
+    const inEl = document.getElementById('jwt-in');
+    inEl.value = 'not a jwt';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('jwt-error').classList.contains('hidden')).toBe(false);
+  });
+});
