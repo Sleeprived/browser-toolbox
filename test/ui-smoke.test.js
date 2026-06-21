@@ -78,4 +78,15 @@ describe('csv UI', () => {
     document.getElementById('to-json').dispatchEvent(new window.Event('click'));
     expect(JSON.parse(document.getElementById('json-out').textContent)).toEqual([{ a: '1', b: '2' }]);
   });
+
+  it('warns on ragged rows but still keeps every cell', async () => {
+    loadBody('csv.html');
+    await import('../src/csv/csv-ui.js');
+    document.getElementById('csv-in').value = 'a,b\n1,2,3';
+    document.getElementById('parse').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('warn').classList.contains('hidden')).toBe(false);
+    document.getElementById('to-json').dispatchEvent(new window.Event('click'));
+    expect(JSON.parse(document.getElementById('json-out').textContent))
+      .toEqual([{ a: '1', b: '2', column_3: '3' }]);
+  });
 });

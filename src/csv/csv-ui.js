@@ -14,6 +14,7 @@ const csvIn = document.getElementById('csv-in');
 const parseBtn = document.getElementById('parse');
 const sampleBtn = document.getElementById('sample');
 const errorBox = document.getElementById('error');
+const warnBox = document.getElementById('warn');
 const tableCard = document.getElementById('table-card');
 const outputCard = document.getElementById('output-card');
 const dims = document.getElementById('dims');
@@ -39,6 +40,13 @@ function showError(msg) {
 }
 function clearError() {
   errorBox.classList.add('hidden');
+}
+function showWarn(msg) {
+  warnBox.textContent = msg;
+  warnBox.classList.remove('hidden');
+}
+function clearWarn() {
+  warnBox.classList.add('hidden');
 }
 
 function setData(header, rows) {
@@ -120,9 +128,9 @@ function sortByColumn(idx) {
   state.rows.sort((a, b) => {
     const x = a[idx] ?? '';
     const y = b[idx] ?? '';
-    const nx = Number(x); const ny = Number(y);
-    const bothNum = x !== '' && y !== '' && !Number.isNaN(nx) && !Number.isNaN(ny);
-    if (bothNum) return (nx - ny) * dir;
+    const isNum = (v) => /^-?\d+(\.\d+)?$/.test(String(v).trim());
+    const bothNum = isNum(x) && isNum(y);
+    if (bothNum) return (Number(x) - Number(y)) * dir;
     return String(x).localeCompare(String(y)) * dir;
   });
   render();
@@ -146,6 +154,7 @@ function dropColumn(idx) {
 
 function parseFromText() {
   clearError();
+  clearWarn();
   try {
     const rows = parseCsv(csvIn.value, delimiter());
     if (rows.length === 0) {
@@ -153,7 +162,15 @@ function parseFromText() {
       setData([], []);
       return;
     }
-    const header = rows[0].map((h, i) => (h === '' ? `column_${i + 1}` : h));
+    let width = 0;
+    for (const r of rows) if (r.length > width) width = r.length;
+    const header = [];
+    for (let i = 0; i < width; i++) {
+      const h = rows[0][i];
+      header.push(h === undefined || h === '' ? `column_${i + 1}` : h);
+    }
+    const ragged = rows.some((r) => r.length !== width);
+    if (ragged) showWarn('Some rows have a different number of columns — short rows were padded and extra cells kept.');
     setData(header, rows.slice(1));
   } catch (e) {
     showError(e instanceof CsvError ? e.message : 'Could not parse CSV.');
@@ -183,20 +200,29 @@ sampleBtn.addEventListener('click', () => {
   parseFromText();
 });
 
-fileInput.addEventListener('change', () => {
-  const f = fileInput.files && fileInput.files[0];
+function readCsvFile(f) {
   if (!f) return;
   if (f.size > MAX_FILE_BYTES) {
     showError(`That file is ${(f.size / 1048576).toFixed(1)} MB — over the 25 MB limit. Skipped.`);
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => {
-    csvIn.value = String(reader.result);
-    parseFromText();
-  };
+  reader.onload = () => { csvIn.value = String(reader.result); parseFromText(); };
   reader.onerror = () => showError('Could not read that file.');
   reader.readAsText(f);
+}
+
+fileInput.addEventListener('change', () => readCsvFile(fileInput.files && fileInput.files[0]));
+
+['dragenter', 'dragover'].forEach((evt) =>
+  csvIn.addEventListener(evt, (e) => { e.preventDefault(); csvIn.classList.add('drag'); }),
+);
+['dragleave', 'drop'].forEach((evt) =>
+  csvIn.addEventListener(evt, (e) => { e.preventDefault(); csvIn.classList.remove('drag'); }),
+);
+csvIn.addEventListener('drop', (e) => {
+  const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) readCsvFile(f);
 });
 
 toJsonBtn.addEventListener('click', () => {

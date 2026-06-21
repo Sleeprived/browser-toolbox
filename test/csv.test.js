@@ -121,4 +121,16 @@ describe('CSV <-> JSON conversion', () => {
     expect(() => jsonToCsv('[1,2,3]')).toThrow(CsvError);
     expect(() => jsonToCsv('not json')).toThrow(CsvError);
   });
+
+  it('strips a leading UTF-8 BOM so the first header is clean', () => {
+    const rows = parseCsv('﻿name,age\nAda,36');
+    expect(rows[0]).toEqual(['name', 'age']); // not ['﻿name', 'age']
+  });
+
+  it('pads the header to the widest row so extra cells are not lost', () => {
+    const rows = parseCsv('a,b\n1,2,3');
+    const { header, objects } = rowsToObjects(rows);
+    expect(header).toEqual(['a', 'b', 'column_3']);
+    expect(objects[0]).toEqual({ a: '1', b: '2', column_3: '3' });
+  });
 });

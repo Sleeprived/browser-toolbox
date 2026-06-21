@@ -9,6 +9,9 @@ export function parseCsv(text, delimiter = ',') {
   if (typeof text !== 'string') throw new CsvError('Input must be a string');
   if (delimiter.length !== 1) throw new CsvError('Delimiter must be a single character');
 
+  // Strip a leading UTF-8 BOM so the first column key isn't "﻿name".
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
   const rows = [];
   let row = [];
   let field = '';
@@ -113,9 +116,14 @@ function uniqueHeaders(header) {
 }
 
 // Convert parsed rows to an array of objects. First row is the header.
+// The header is padded to the widest row so extra cells are never lost.
 export function rowsToObjects(rows) {
   if (rows.length === 0) return { header: [], objects: [] };
-  const header = uniqueHeaders(rows[0]);
+  let width = 0;
+  for (const r of rows) if (r.length > width) width = r.length;
+  const rawHeader = rows[0].slice();
+  while (rawHeader.length < width) rawHeader.push(`column_${rawHeader.length + 1}`);
+  const header = uniqueHeaders(rawHeader);
   const objects = rows.slice(1).map((row) => {
     const obj = {};
     header.forEach((key, idx) => {
