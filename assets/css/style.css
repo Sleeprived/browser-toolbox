@@ -134,7 +134,7 @@ h2 { font-size: 1.15rem; margin: 26px 0 10px; }
   margin: 16px 0;
 }
 label { display: block; font-size: 0.9rem; color: var(--text-dim); margin: 10px 0 4px; }
-input[type="text"], input[type="password"], input[type="number"], textarea, select {
+input[type="text"], input[type="password"], input[type="number"], input[type="search"], input[type="url"], textarea, select {
   width: 100%;
   background: var(--surface-2);
   color: var(--text);
@@ -259,3 +259,40 @@ button.hex {
   color: inherit;
   cursor: pointer;
 }
+
+/* ---- Password Vault ---- */
+.visually-hidden-h { position: absolute; left: -999px; }
+.vault-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.vault-toolbar input[type="search"] { flex: 1; min-width: 160px; }
+.vault-toolbar select { width: auto; min-width: 110px; }
+.vault-status { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; font-size: 0.85rem; color: var(--text-dim); }
+.vault-status .inline-label { margin: 0 0 0 auto; color: var(--text-dim); }
+.vault-status .inline-label input { width: 60px; display: inline-block; }
+.badge { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 2px 10px; font-size: 0.78rem; }
+
+#change-master { margin-top: 12px; }
+details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+
+.field-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.field-row input { flex: 1; min-width: 140px; }
+.copy-btn { white-space: nowrap; }
+.danger-btn { color: var(--danger); border-color: var(--danger); }
+
+.entry-list { list-style: none; padding: 0; margin: 14px 0; display: grid; gap: 8px; }
+.entry-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.entry-item .info { flex: 1; min-width: 160px; }
+.entry-item .title { font-weight: 650; }
+.entry-item .sub { color: var(--text-dim); font-size: 0.85rem; word-break: break-all; }
+.entry-item .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.tag-chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-size: 0.74rem; color: var(--text-dim); }
+
+.totp-display { display: flex; gap: 12px; align-items: center; margin: 8px 0; }
+#totp-code { font-size: 1.25rem; letter-spacing: 2px; }
+
+.custom-fields-set { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px 12px; margin: 14px 0; }
+.custom-fields-set legend { color: var(--text-dim); font-size: 0.85rem; padding: 0 6px; }
+.custom-field-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 6px 0; }
+.custom-field-row .cf-label { flex: 0 1 140px; min-width: 110px; }
+.custom-field-row .cf-value { flex: 1; min-width: 140px; }
+.cf-hide-label { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text-dim); white-space: nowrap; }
+.cf-hide-label input { width: auto; }

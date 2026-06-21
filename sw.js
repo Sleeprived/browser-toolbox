@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -44,12 +44,18 @@ const ASSETS = [
   'encode.html',
   'jwt.html',
   'image.html',
+  'vault.html',
   'src/encode/encode.js',
   'src/encode/encode-ui.js',
   'src/jwt/jwt.js',
   'src/jwt/jwt-ui.js',
   'src/image/image.js',
   'src/image/image-ui.js',
+  'src/vault/crypto.js',
+  'src/vault/model.js',
+  'src/vault/totp.js',
+  'src/vault/passgen.js',
+  'src/vault/vault-ui.js',
   'assets/img/icon-192.png',
   'assets/img/icon-512.png',
   'assets/img/icon-maskable-512.png',

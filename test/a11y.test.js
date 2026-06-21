@@ -13,6 +13,7 @@ describe('accessibility: dynamic regions are announced', () => {
     ['qr.html', ['id="error"', 'role="alert"']],
     ['exif.html', ['id="results"', 'aria-live="polite"']],
     ['palette.html', ['id="error"', 'role="alert"']],
+    ['vault.html', ['id="unlock-error"', 'role="alert"'], ['id="save-msg"', 'aria-live="polite"']],
   ];
   for (const [file, ...pairs] of cases) {
     it(`${file} has announced regions`, () => {
@@ -25,7 +26,7 @@ describe('accessibility: dynamic regions are announced', () => {
   }
 
   it('every page has a skip link', () => {
-    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html']) {
+    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html', 'vault.html']) {
       expect(read(f)).toContain('class="skip-link"');
     }
   });

@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-06-21 — v1.2.0
+
+### Added
+- **Password Vault** (`vault.html`): a private, offline password manager. Entries
+  are stored in a single file the user keeps, encrypted with **AES-256-GCM**; the
+  master password is stretched with **PBKDF2-HMAC-SHA256 (600,000 iterations)**.
+  The file is opened/saved via plain download/upload — nothing is persisted in the
+  browser and nothing is uploaded.
+  - Per-entry fields: title, username, password, URL, notes, **tags**, **custom
+    fields** (with optional masking), and **password history**.
+  - **Offline TOTP/2FA** code generation (RFC 6238, HMAC-SHA1/256/512) with a live
+    countdown — verified against the published RFC test vectors.
+  - Built-in password generator: diceware passphrases (reusing the Passphrase
+    tool) or random characters with class guarantees.
+  - Security behaviors: master-password strength gate (reuses the strength meter),
+    inactivity **auto-lock**, in-memory key wiped on lock/unload, best-effort
+    **clipboard auto-clear**, unsaved-changes guard, and a master-password change
+    flow. There is **no password reset** — the file is the user's to back up.
+  - File format is versioned (KDF parameters in a plaintext header) so the work
+    factor can be raised, or the KDF upgraded, without breaking older files.
+- **Service worker bumped to v4** — precaches `vault.html` and the five vault src
+  modules for offline use.
+
+### Notes
+- New pure modules are unit-tested with Vitest (crypto round-trip / wrong-password
+  / tamper rejection, RFC 6238 + RFC 4226 vectors, generator class guarantees,
+  model CRUD/serialize). The vault UI has runtime smoke coverage.
+
 ## 2026-06-20 — v1.1.0
 
 ### Added

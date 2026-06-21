@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
-  <meta name="description" content="Nine private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, CSV/JSON, color palettes, cron, encode/decode, JWT decoder, and image resizer. Everything runs in your browser." />
+  <meta name="description" content="Ten private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, a local encrypted password vault, CSV/JSON, color palettes, cron, encode/decode, JWT decoder, and image resizer. Everything runs in your browser." />
   <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <title>Browser Toolbox</title>
@@ -28,7 +28,7 @@
     </noscript>
 
     <h1>Browser Toolbox</h1>
-    <p class="lead">Nine handy tools that run entirely in your browser.</p>
+    <p class="lead">Ten handy tools that run entirely in your browser.</p>
 
     <div class="privacy-note">
       <span aria-hidden="true">&#128274;</span>
@@ -47,6 +47,10 @@
       <a class="tool-card" href="passphrase.html">
         <div class="t">Passphrase Generator</div>
         <div class="d">Strong diceware passphrases plus an offline password strength meter.</div>
+      </a>
+      <a class="tool-card" href="vault.html">
+        <div class="t">Password Vault</div>
+        <div class="d">A local, offline password manager. AES-256 encrypted file you keep &mdash; with TOTP, tags, and a generator.</div>
       </a>
       <a class="tool-card" href="csv.html">
         <div class="t">CSV &#8646; JSON Workbench</div>

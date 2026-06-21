@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <title>Password Vault — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Password Vault</h1>
+    <p class="lead">A private, offline password manager. Your entries live in one encrypted file that you keep &mdash; nothing is uploaded or stored on any server.</p>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span><strong>100% local.</strong> Encrypted with AES-256-GCM; your master password is stretched with PBKDF2. The file never leaves your device. <strong>There is no password reset</strong> &mdash; if you forget your master password, the data is gone forever, so keep backups of your file.</span>
+    </div>
+
+    <!-- ============ LOCKED / LANDING ============ -->
+    <section id="vault-locked" class="card" aria-labelledby="locked-h">
+      <h2 id="locked-h">Open or create a vault</h2>
+      <p class="lead">Open an existing encrypted vault file, or create a new one.</p>
+      <div class="btn-row">
+        <button class="btn" type="button" id="open-existing">Open vault file&hellip;</button>
+        <button class="btn secondary" type="button" id="create-new">Create new vault</button>
+      </div>
+      <input type="file" id="file-input" accept=".json,application/json" class="hidden" aria-hidden="true" />
+      <div id="open-error" class="msg error hidden" role="alert"></div>
+    </section>
+
+    <!-- ============ CREATE NEW ============ -->
+    <section id="vault-create" class="card hidden" aria-labelledby="create-h">
+      <h2 id="create-h">Create a new vault</h2>
+      <div class="msg warn">
+        Choose a strong master password &mdash; ideally a passphrase. It is the only key to your data and
+        <strong>cannot be recovered or reset</strong>. Write it down somewhere safe.
+      </div>
+      <label for="new-master">Master password</label>
+      <input type="password" id="new-master" class="mono" autocomplete="new-password" spellcheck="false" />
+      <button class="btn secondary" type="button" id="new-master-reveal" aria-pressed="false">Show</button>
+      <div class="meter"><span id="master-meter-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></span></div>
+      <p id="master-strength" class="lead" aria-live="polite">&nbsp;</p>
+      <label for="new-master-confirm">Confirm master password</label>
+      <input type="password" id="new-master-confirm" class="mono" autocomplete="new-password" spellcheck="false" />
+      <div class="btn-row">
+        <button class="btn" type="button" id="create-confirm" disabled>Create vault</button>
+        <button class="btn secondary" type="button" id="create-cancel">Cancel</button>
+      </div>
+      <div id="create-error" class="msg error hidden" role="alert"></div>
+    </section>
+
+    <!-- ============ UNLOCK ============ -->
+    <section id="vault-unlock" class="card hidden" aria-labelledby="unlock-h">
+      <h2 id="unlock-h">Unlock vault</h2>
+      <p class="lead">File: <code id="unlock-filename" class="mono"></code></p>
+      <label for="unlock-master">Master password</label>
+      <input type="password" id="unlock-master" class="mono" autocomplete="current-password" spellcheck="false" />
+      <button class="btn secondary" type="button" id="unlock-reveal" aria-pressed="false">Show</button>
+      <div class="btn-row">
+        <button class="btn" type="button" id="unlock-confirm">Unlock</button>
+        <button class="btn secondary" type="button" id="unlock-cancel">Cancel</button>
+      </div>
+      <div id="unlock-error" class="msg error hidden" role="alert"></div>
+    </section>
+
+    <!-- ============ UNLOCKED APP ============ -->
+    <section id="vault-app" class="hidden" aria-labelledby="app-h">
+      <h2 id="app-h" class="visually-hidden-h">Your vault</h2>
+      <div class="card">
+        <div class="vault-toolbar">
+          <input type="search" id="vault-search" placeholder="Search title or username&hellip;" aria-label="Search entries" />
+          <select id="tag-filter" aria-label="Filter by tag"><option value="">All tags</option></select>
+          <button class="btn" type="button" id="add-entry">Add entry</button>
+          <button class="btn secondary" type="button" id="save-vault">Save</button>
+          <button class="btn secondary" type="button" id="lock-vault">Lock</button>
+        </div>
+        <div class="vault-status">
+          <span id="dirty-badge" class="badge hidden">Unsaved changes</span>
+          <span id="save-msg" class="lead" aria-live="polite"></span>
+          <label for="autolock-min" class="inline-label">Auto-lock after
+            <input type="number" id="autolock-min" min="1" max="120" value="10" /> min</label>
+        </div>
+        <details id="change-master">
+          <summary>Change master password</summary>
+          <div class="msg warn">Changing this re-encrypts the vault. You must <strong>Save</strong> afterwards to write the change to your file.</div>
+          <label for="cm-new">New master password</label>
+          <input type="password" id="cm-new" class="mono" autocomplete="new-password" spellcheck="false" />
+          <div class="meter"><span id="cm-meter-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></span></div>
+          <p id="cm-strength" class="lead" aria-live="polite">&nbsp;</p>
+          <label for="cm-confirm">Confirm new master password</label>
+          <input type="password" id="cm-confirm" class="mono" autocomplete="new-password" spellcheck="false" />
+          <div class="btn-row">
+            <button class="btn" type="button" id="cm-apply" disabled>Change password</button>
+          </div>
+          <div id="cm-msg" class="msg ok hidden" aria-live="polite"></div>
+        </details>
+      </div>
+
+      <div id="empty-state" class="lead hidden">No entries yet. Click &ldquo;Add entry&rdquo; to create your first one.</div>
+      <div id="no-match" class="lead hidden">No entries match your search.</div>
+      <ul id="entry-list" class="entry-list" aria-label="Vault entries"></ul>
+
+      <!-- Inline entry editor -->
+      <section id="entry-editor" class="card hidden" aria-labelledby="editor-h">
+        <h3 id="editor-h">Edit entry</h3>
+        <label for="f-title">Title</label>
+        <input type="text" id="f-title" />
+
+        <label for="f-username">Username / email</label>
+        <div class="field-row">
+          <input type="text" id="f-username" class="mono" autocomplete="off" spellcheck="false" />
+          <button class="btn secondary copy-btn" type="button" id="copy-username">Copy</button>
+        </div>
+
+        <label for="f-password">Password</label>
+        <div class="field-row">
+          <input type="password" id="f-password" class="mono" autocomplete="off" spellcheck="false" />
+          <button class="btn secondary" type="button" id="f-password-reveal" aria-pressed="false">Show</button>
+          <button class="btn secondary copy-btn" type="button" id="copy-password">Copy</button>
+        </div>
+        <div class="meter"><span id="f-strength-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></span></div>
+        <p id="f-strength" class="lead" aria-live="polite">&nbsp;</p>
+
+        <!-- Generator -->
+        <details id="generator">
+          <summary>Generate a password</summary>
+          <div class="row">
+            <div>
+              <label for="gen-mode">Type</label>
+              <select id="gen-mode">
+                <option value="passphrase">Passphrase (words)</option>
+                <option value="random">Random characters</option>
+              </select>
+            </div>
+            <div id="gen-len-wrap">
+              <label for="gen-length">Length: <span id="gen-length-val">20</span></label>
+              <input type="range" id="gen-length" min="8" max="64" value="20" />
+            </div>
+          </div>
+          <div id="gen-random-opts">
+            <div class="check"><input type="checkbox" id="gen-lower" checked /><label for="gen-lower">lowercase</label></div>
+            <div class="check"><input type="checkbox" id="gen-upper" checked /><label for="gen-upper">UPPERCASE</label></div>
+            <div class="check"><input type="checkbox" id="gen-digits" checked /><label for="gen-digits">digits</label></div>
+            <div class="check"><input type="checkbox" id="gen-symbols" checked /><label for="gen-symbols">symbols</label></div>
+          </div>
+          <div id="gen-words-wrap" class="hidden">
+            <label for="gen-words">Words: <span id="gen-words-val">5</span></label>
+            <input type="range" id="gen-words" min="3" max="10" value="5" />
+            <div class="check"><input type="checkbox" id="gen-cap" checked /><label for="gen-cap">Capitalize each word</label></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn secondary" type="button" id="gen-make">Generate</button>
+            <button class="btn" type="button" id="gen-use" disabled>Use this</button>
+          </div>
+          <input type="text" id="gen-out" class="mono" readonly aria-label="Generated password preview" />
+          <div id="gen-error" class="msg error hidden" role="alert"></div>
+        </details>
+
+        <label for="f-url">Website URL</label>
+        <input type="url" id="f-url" class="mono" autocomplete="off" spellcheck="false" />
+
+        <label for="f-notes">Notes</label>
+        <textarea id="f-notes"></textarea>
+
+        <label for="f-tags">Tags (comma-separated)</label>
+        <input type="text" id="f-tags" />
+
+        <!-- TOTP -->
+        <label for="f-totp">Two-factor (TOTP) secret &mdash; optional</label>
+        <div class="field-row">
+          <input type="text" id="f-totp" class="mono" autocomplete="off" spellcheck="false" placeholder="base32 secret from the site" />
+        </div>
+        <div id="totp-display" class="totp-display hidden">
+          <span id="totp-code" class="mono"></span>
+          <span id="totp-countdown" class="lead"></span>
+          <button class="btn secondary copy-btn" type="button" id="copy-totp">Copy code</button>
+        </div>
+
+        <!-- Custom fields -->
+        <fieldset class="custom-fields-set">
+          <legend>Custom fields</legend>
+          <div id="custom-fields"></div>
+          <button class="btn secondary" type="button" id="add-custom">Add custom field</button>
+        </fieldset>
+
+        <!-- Password history -->
+        <details id="history" class="hidden">
+          <summary>Previous passwords (<span id="history-count">0</span>)</summary>
+          <ul id="history-list" class="next-runs"></ul>
+        </details>
+
+        <div class="btn-row">
+          <button class="btn" type="button" id="entry-save">Save entry</button>
+          <button class="btn secondary" type="button" id="entry-cancel">Cancel</button>
+          <button class="btn secondary danger-btn" type="button" id="entry-delete">Delete</button>
+        </div>
+        <div id="copied-msg" class="msg ok hidden" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    Encrypted locally with AES-256-GCM + PBKDF2 &middot; nothing is uploaded &middot; you keep and back up the file
+  </footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/vault/vault-ui.js"></script>
+</body>
+</html>

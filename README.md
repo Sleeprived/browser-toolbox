@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Nine handy tools that run entirely in your web browser — no upload, no account,
+Ten handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -13,6 +13,11 @@ Screen** to install it like an app.
   and hidden trailing data) from JPEG and PNG photos.
 - **Passphrase Generator** — strong diceware passphrases, plus an offline password
   strength meter.
+- **Password Vault** — a private, offline password manager. Your entries live in
+  one file you keep, encrypted with AES-256-GCM and a PBKDF2-stretched master
+  password. Includes offline TOTP/2FA codes, tags, custom fields, password
+  history, and a built-in generator. There is no cloud and **no password reset** —
+  you own and back up the file.
 - **CSV ⇄ JSON Workbench** — view a CSV as a table, sort/rename/drop columns, and
   convert to JSON and back.
 - **Color Palette Extractor** — pull the dominant colors from an image; export as

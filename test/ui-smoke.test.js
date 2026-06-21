@@ -147,6 +147,96 @@ describe('jwt UI', () => {
   });
 });
 
+describe('vault UI', () => {
+  it('starts on the locked screen with the app hidden', async () => {
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    expect(document.getElementById('vault-locked').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('vault-app').classList.contains('hidden')).toBe(true);
+  });
+
+  it('reveals the create form and gates the button on master-password strength', async () => {
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    document.getElementById('create-new').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('vault-create').classList.contains('hidden')).toBe(false);
+
+    const pw = document.getElementById('new-master');
+    const confirm = document.getElementById('new-master-confirm');
+    const btn = document.getElementById('create-confirm');
+
+    pw.value = 'weak';
+    pw.dispatchEvent(new window.Event('input'));
+    expect(btn.disabled).toBe(true);
+
+    pw.value = 'vault-master-correct-horse-staple-9!';
+    pw.dispatchEvent(new window.Event('input'));
+    confirm.value = 'vault-master-correct-horse-staple-9!';
+    confirm.dispatchEvent(new window.Event('input'));
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('cancelling the create form returns to the locked screen', async () => {
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    document.getElementById('create-new').dispatchEvent(new window.Event('click'));
+    document.getElementById('create-cancel').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('vault-locked').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('vault-create').classList.contains('hidden')).toBe(true);
+  });
+
+  it('auto-locks after the configured inactivity timeout', async () => {
+    vi.useFakeTimers();
+    try {
+      loadBody('vault.html');
+      const mod = await import('../src/vault/vault-ui.js');
+      mod.state.unlocked = true;
+      document.getElementById('autolock-min').value = '1'; // 1 minute
+      document.dispatchEvent(new window.Event('click')); // activity arms the timer
+      vi.advanceTimersByTime(59 * 1000);
+      expect(mod.state.unlocked).toBe(true);
+      vi.advanceTimersByTime(2 * 1000); // cross the 60s threshold
+      expect(mod.state.unlocked).toBe(false);
+      expect(document.getElementById('vault-locked').classList.contains('hidden')).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('saving re-encrypts and clears the unsaved-changes flag', async () => {
+    loadBody('vault.html');
+    const mod = await import('../src/vault/vault-ui.js');
+    const { deriveKey } = await import('../src/vault/crypto.js');
+
+    const origCreate = global.URL.createObjectURL;
+    const origRevoke = global.URL.revokeObjectURL;
+    const origClick = window.HTMLAnchorElement.prototype.click;
+    global.URL.createObjectURL = () => 'blob:fake';
+    global.URL.revokeObjectURL = () => {};
+    window.HTMLAnchorElement.prototype.click = () => {}; // jsdom would try to navigate
+    try {
+      const salt = new Uint8Array(16).fill(3);
+      mod.state.unlocked = true;
+      mod.state.key = await deriveKey('pw', salt, 1000);
+      mod.state.salt = salt;
+      mod.state.iterations = 1000;
+      mod.state.entries = [];
+      mod.state.dirty = true;
+
+      document.getElementById('save-vault').dispatchEvent(new window.Event('click'));
+      // doSave is async (real AES-GCM); poll for the result.
+      for (let i = 0; i < 100 && mod.state.dirty; i++) await new Promise((r) => setTimeout(r, 10));
+
+      expect(mod.state.dirty).toBe(false);
+      expect(document.getElementById('save-msg').textContent).toMatch(/Saved/);
+    } finally {
+      global.URL.createObjectURL = origCreate;
+      global.URL.revokeObjectURL = origRevoke;
+      window.HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+});
+
 describe('image UI', () => {
   it('module loads and wires controls without touching canvas at import', async () => {
     loadBody('image.html');
