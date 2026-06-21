@@ -7,12 +7,14 @@ export function rgbToHex(r, g, b) {
   return '#' + h(r) + h(g) + h(b);
 }
 
+const ALPHA_THRESHOLD = 16; // ignore pixels fainter than this (anti-aliased edges, near-transparent fills)
+
 // Collect [r,g,b] triples from a flat RGBA Uint8 array, skipping fully
-// transparent pixels.
+// transparent and near-transparent pixels.
 export function pixelsFromRgba(rgba) {
   const out = [];
   for (let i = 0; i < rgba.length; i += 4) {
-    if (rgba[i + 3] === 0) continue; // skip transparent
+    if (rgba[i + 3] < ALPHA_THRESHOLD) continue; // skip transparent / near-transparent
     out.push([rgba[i], rgba[i + 1], rgba[i + 2]]);
   }
   return out;

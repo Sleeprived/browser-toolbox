@@ -14,12 +14,17 @@ const swatchesEl = document.getElementById('swatches');
 const exportOut = document.getElementById('export-out');
 const copiedMsg = document.getElementById('copied');
 const work = document.getElementById('work');
+const infoBox = document.getElementById('palette-info');
 
 let palette = [];
 let currentUrl = null;
 let lastPixels = null; // cached [r,g,b] pixels of the current image (decode once)
 
+function showInfo(msg) { infoBox.textContent = msg; infoBox.classList.remove('hidden'); }
+function clearInfo() { infoBox.classList.add('hidden'); }
+
 function showError(msg) {
+  clearInfo();
   errorBox.textContent = msg;
   errorBox.classList.remove('hidden');
   resultBox.classList.add('hidden');
@@ -55,10 +60,16 @@ function extractFromImage(img) {
 
 function requantize() {
   if (!lastPixels) return;
-  palette = quantize(lastPixels, Number(countRange.value));
+  const requested = Number(countRange.value);
+  palette = quantize(lastPixels, requested);
   if (palette.length === 0) {
     showError('No opaque pixels found in this image — there are no colors to extract.');
     return;
+  }
+  if (palette.length < requested) {
+    showInfo(`This image has only ${palette.length} distinct color region${palette.length === 1 ? '' : 's'}.`);
+  } else {
+    clearInfo();
   }
   renderSwatches();
   errorBox.classList.add('hidden');
@@ -74,9 +85,11 @@ function renderSwatches() {
     const chip = document.createElement('div');
     chip.className = 'chip';
     chip.style.background = c.hex; // CSSOM style — allowed under CSP
-    const hex = document.createElement('div');
+    const hex = document.createElement('button');
+    hex.type = 'button';
     hex.className = 'hex';
     hex.textContent = c.hex;
+    hex.setAttribute('aria-label', `Copy ${c.hex}`);
     hex.title = 'Click to copy';
     hex.addEventListener('click', () => copyText(c.hex));
     sw.append(chip, hex);

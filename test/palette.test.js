@@ -74,6 +74,13 @@ describe('pixelsFromRgba', () => {
     const rgba = new Uint8Array([255, 0, 0, 0, /* transparent */ 0, 255, 0, 255]);
     expect(pixelsFromRgba(rgba)).toEqual([[0, 255, 0]]);
   });
+
+  it('skips near-transparent pixels, not just alpha===0', () => {
+    // one opaque red, one barely-visible blue (alpha 8) -> blue is ignored.
+    const rgba = new Uint8Array([255, 0, 0, 255, 0, 0, 255, 8]);
+    const px = pixelsFromRgba(rgba);
+    expect(px).toEqual([[255, 0, 0]]);
+  });
 });
 
 describe('quantize', () => {
