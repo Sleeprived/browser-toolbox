@@ -164,6 +164,7 @@ function renderCard(file, foundLines, blob, downloadName, isError) {
   }
   if (isError) card.classList.add('msg');
   results.appendChild(card);
+  clearBtn.classList.remove('hidden');
 }
 
 clearBtn.addEventListener('click', () => {
@@ -183,7 +184,6 @@ function handleFiles(fileList) {
     }
     processFile(file);
   }
-  if (results.children.length > 0) clearBtn.classList.remove('hidden');
 }
 
 dropzone.addEventListener('click', () => fileInput.click());
