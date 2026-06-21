@@ -99,3 +99,26 @@ describe('csv UI', () => {
       .toEqual([{ a: '1', b: '2', column_3: '3' }]);
   });
 });
+
+describe('encode UI', () => {
+  it('encodes input live and decodes back', async () => {
+    loadBody('encode.html');
+    await import('../src/encode/encode-ui.js');
+    const inEl = document.getElementById('enc-in');
+    inEl.value = 'AB';
+    document.getElementById('enc-format').value = 'hex';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('enc-out').textContent).toBe('4142');
+  });
+
+  it('shows an aria-live error for invalid hex on decode', async () => {
+    loadBody('encode.html');
+    await import('../src/encode/encode-ui.js');
+    document.getElementById('enc-format').value = 'hex';
+    document.getElementById('enc-mode').value = 'decode';
+    const inEl = document.getElementById('enc-in');
+    inEl.value = 'zz';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('enc-error').classList.contains('hidden')).toBe(false);
+  });
+});

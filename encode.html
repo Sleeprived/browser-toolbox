@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <title>Encode / Decode Multitool — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Encode / Decode Multitool</h1>
+    <p class="lead">Convert text to and from Base64, Hex, URL encoding, and HTML entities — entirely in your browser.</p>
+
+    <div class="card">
+      <label for="enc-in">Input</label>
+      <textarea id="enc-in" class="mono" placeholder="Type or paste text here"></textarea>
+      <div class="row">
+        <div>
+          <label for="enc-format">Format</label>
+          <select id="enc-format">
+            <option value="base64">Base64</option>
+            <option value="base64url">Base64 (URL-safe)</option>
+            <option value="hex">Hex</option>
+            <option value="url">URL encoding</option>
+            <option value="html">HTML entities</option>
+          </select>
+        </div>
+        <div>
+          <label for="enc-mode">Direction</label>
+          <select id="enc-mode">
+            <option value="encode">Encode</option>
+            <option value="decode">Decode</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="enc-error" class="msg error hidden" role="alert"></div>
+
+    <div class="card">
+      <h2>Output</h2>
+      <pre class="out" id="enc-out" aria-live="polite"></pre>
+      <div class="btn-row">
+        <button class="btn" type="button" id="enc-copy">Copy output</button>
+      </div>
+      <p id="enc-copied" class="lead hidden" aria-live="polite"></p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>All conversion happens in your browser. Nothing you enter is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/encode/encode-ui.js"></script>
+</body>
+</html>
