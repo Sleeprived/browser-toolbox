@@ -269,6 +269,28 @@ describe('JPEG metadata after the first scan (M3)', () => {
   });
 });
 
+describe('JPEG crafted entropy robustness (audit-5)', () => {
+  it('does not truncate the scan on a crafted 0xFF 0xFF <non-marker> sequence', () => {
+    // 0xFF inside entropy is only valid before 0x00 (stuffing) or a restart
+    // marker. A crafted "0xFF 0xFF 0x30" must be walked through as scan data,
+    // not mistaken for a marker that cuts the scan (and the trailing EOI) short.
+    const craftedScan = [0x10, 0x20, 0xff, 0xff, 0x30, 0xff, 0x00, 0x40];
+    const bytes = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      Uint8Array.from(SOS_HEADER),
+      Uint8Array.from(craftedScan),
+      Uint8Array.of(0xff, 0xd9), // EOI
+    ]);
+    const cleaned = jpeg.stripJpegMetadata(bytes);
+    // The EOI must survive at the very end (pre-fix the scan was cut at 0xFF30
+    // and everything after it — including the EOI — was dropped).
+    expect(Array.from(cleaned.slice(-2))).toEqual([0xff, 0xd9]);
+    // And it still decodes.
+    expect(jpeg.readJpegDimensions(cleaned)).toEqual({ width: 2, height: 2 });
+  });
+});
+
 describe('JPEG GPS zero-denominator guard (minor bug)', () => {
   it('readExifSummary returns null GPS instead of "NaN, NaN" on a zero denominator', () => {
     // Build EXIF with a malformed GPS latitude (denominator 0) and re-read it.

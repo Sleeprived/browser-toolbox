@@ -99,16 +99,17 @@ function endOfScanData(bytes, start) {
   while (k < n - 1) {
     if (bytes[k] === 0xff) {
       const mk = bytes[k + 1];
-      // 0xFF (fill) is a single padding byte: skip it and re-examine the next
-      // 0xFF against the byte that follows.
-      if (mk === 0xff) { k++; continue; }
       // 0x00 (stuffing) and 0xD0–0xD7 (restart) belong to the scan.
       if (mk === 0x00 || (mk >= 0xd0 && mk <= 0xd7)) {
         k += 2;
         continue;
       }
-      // Any other value is the next real marker and ends this scan.
-      return k;
+      // A real segment marker (0xC0–0xFE; the restart range is handled above)
+      // ends the scan. 0xFF fill bytes and reserved/garbage bytes (< 0xC0) are
+      // NOT markers — treat them as scan data and keep walking, so a malformed
+      // or crafted entropy stream reaches the true next marker instead of being
+      // truncated mid-scan.
+      if (mk >= 0xc0 && mk <= 0xfe) return k;
     }
     k++;
   }

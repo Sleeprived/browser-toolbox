@@ -139,6 +139,7 @@ function render() {
   const quality = Number(qualityRange.value);
   canvas.toBlob((blob) => {
     if (!blob) { showError('Could not encode the image in that format.'); return; }
+    errorBox.classList.add('hidden'); // dismiss any stale clamp/large-image notice on success
     outBlob = blob;
     if (outUrl) URL.revokeObjectURL(outUrl);
     outUrl = URL.createObjectURL(blob);

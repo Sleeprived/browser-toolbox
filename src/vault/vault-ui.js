@@ -763,7 +763,7 @@ function init() {
   // On pagehide do a full DOM scrub (lock), not just wipeMemory, so the
   // decrypted list, editor fields, and master inputs do not linger; also drop
   // the rendered list so stale Copy-button closures (capturing plaintext) die.
-  window.addEventListener('pagehide', () => { $('entry-list').textContent = ''; lock(); });
+  window.addEventListener('pagehide', () => { const el = $('entry-list'); if (el) el.textContent = ''; lock(); });
   // If the page is restored from the bfcache while logically locked, re-lock so
   // no decrypted DOM survives a back/forward restore.
   window.addEventListener('pageshow', (e) => { if (e.persisted && !state.unlocked) lock(); });

@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-06-21 — v1.2.3 — fixes from browser-toolbox-audit-5.md
+
+### Fixed
+- **EXIF**: a crafted `FF FF <non-marker>` byte sequence in the scan data no
+  longer truncates the image (regression from the v1.2.2 progressive-JPEG fix).
+- **Image**: the "very large image — clamped" notice no longer lingers as a red
+  alert after a successful resize.
+- **Vault**: the page-hide handler now fails safe if the entry-list node is absent.
+
+### Changed
+- **Service worker bumped to v7** so the above reach already-installed users.
+
 ## 2026-06-21 — v1.2.2 — fixes from browser-toolbox-audit-4.md
 
 ### Fixed
