@@ -202,15 +202,38 @@ describe('QR matrix', () => {
   });
 
   it('encodes non-ASCII as UTF-8 (no Latin-1 corruption)', () => {
-    // "café" UTF-8 = 63 61 66 c3 a9 (5 bytes). The known-good matrix for this
-    // exact byte sequence at level M is 21x21. We assert determinism + that the
-    // accented build differs from a deliberately mangled Latin-1 build would.
-    const accented = matrixToBitString(getQrMatrix('café', 'M'));
-    // Re-encoding the SAME bytes must be stable...
-    expect(matrixToBitString(getQrMatrix('café', 'M'))).toBe(accented);
-    // ...and an emoji (4-byte) input must encode without throwing and differ.
+    // "café" UTF-8 = 63 61 66 c3 a9 (5 bytes) → version-1 (21×21) at level M.
+    // This vector is pinned against the UTF-8 encoder; a Latin-1 encoder produces
+    // a different byte sequence (63 61 66 e9 = 4 bytes) and therefore a different
+    // matrix — so removing the UTF-8 switch in matrix.js will break this test.
+    const CAFE_M = [
+      '111111100100001111111',
+      '100000100010001000001',
+      '101110101100101011101',
+      '101110101100001011101',
+      '101110101111101011101',
+      '100000101000101000001',
+      '111111101010101111111',
+      '000000001011100000000',
+      '101111100010101111100',
+      '111010011110100100101',
+      '010000101011010011110',
+      '100010010110000111111',
+      '001001100011010010000',
+      '000000001001111001101',
+      '111111100100101100010',
+      '100000101001111001000',
+      '101110101000100100010',
+      '101110101010100100000',
+      '101110101011010011100',
+      '100000100110000110100',
+      '111111101001010010110',
+    ].join('\n');
+    expect(matrixToBitString(getQrMatrix('café', 'M'))).toBe(CAFE_M);
+    // An emoji (4-byte UTF-8) must encode without throwing and differ from the
+    // accented build (different payload bytes → different matrix).
     const emoji = matrixToBitString(getQrMatrix('café 😀', 'M'));
-    expect(emoji).not.toBe(accented);
+    expect(emoji).not.toBe(CAFE_M);
   });
 
   it('ASCII matrices are unchanged by the UTF-8 switch (regression guard)', () => {
