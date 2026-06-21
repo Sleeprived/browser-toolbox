@@ -2,6 +2,10 @@ Browser Toolbox bundles the EFF Large Wordlist for passphrase generation.
 "EFF Large Wordlist" by the Electronic Frontier Foundation is licensed under
 CC BY 3.0 US (https://creativecommons.org/licenses/by/3.0/us/).
 
-Vendored libraries:
-- qrcode-generator (MIT) — Kazuhiko Arase
-- piexifjs (MIT) — hMatoba
+Vendored libraries (the file in assets/vendor/ is byte-identical to the npm
+release of the version listed below; when upgrading, re-copy from node_modules
+and update both this version and the matching pin in package.json):
+- qrcode-generator 2.0.4 (MIT) — Kazuhiko Arase
+- piexifjs 1.0.6 (MIT) — hMatoba
+  (piexif.js self-reports `that.version = "1.0.4"` internally; that is an
+  upstream labeling bug — the shipped file is the official 1.0.6 release.)
