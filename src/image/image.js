@@ -16,12 +16,12 @@ export function computeTargetSize(srcW, srcH, opts = {}) {
   const hasH = opts.height != null && opts.height > 0;
   if (!hasW && !hasH) return { width: srcW, height: srcH };
   if (lock) {
-    if (hasW && !hasH) return { width: Math.round(opts.width), height: Math.max(1, Math.round(opts.width * srcH / srcW)) };
-    if (hasH && !hasW) return { width: Math.max(1, Math.round(opts.height * srcW / srcH)), height: Math.round(opts.height) };
+    if (hasW && !hasH) return { width: Math.max(1, Math.round(opts.width)), height: Math.max(1, Math.round(opts.width * srcH / srcW)) };
+    if (hasH && !hasW) return { width: Math.max(1, Math.round(opts.height * srcW / srcH)), height: Math.max(1, Math.round(opts.height)) };
     const scale = Math.min(opts.width / srcW, opts.height / srcH);
     return { width: Math.max(1, Math.round(srcW * scale)), height: Math.max(1, Math.round(srcH * scale)) };
   }
-  return { width: hasW ? Math.round(opts.width) : srcW, height: hasH ? Math.round(opts.height) : srcH };
+  return { width: hasW ? Math.max(1, Math.round(opts.width)) : srcW, height: hasH ? Math.max(1, Math.round(opts.height)) : srcH };
 }
 
 // EXIF orientation (1-8) → how to transform the canvas. `swap` means width/height

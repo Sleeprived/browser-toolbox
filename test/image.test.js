@@ -23,6 +23,10 @@ describe('computeTargetSize', () => {
   it('throws on non-positive source', () => {
     expect(() => computeTargetSize(0, 100, { width: 10 })).toThrow();
   });
+  it('never returns a dimension below 1 (floors tiny targets)', () => {
+    expect(computeTargetSize(1000, 500, { width: 0.4, lock: true })).toEqual({ width: 1, height: 1 });
+    expect(computeTargetSize(1000, 500, { width: 0.4, height: 0.4, lock: false })).toEqual({ width: 1, height: 1 });
+  });
 });
 
 describe('orientationToTransform', () => {
