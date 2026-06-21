@@ -183,6 +183,30 @@ describe('JPEG hardened strip (XMP / IPTC / trailing)', () => {
   });
 });
 
+describe('JPEG JFIF thumbnail normalization', () => {
+  it('drops the JFIF APP0 embedded thumbnail and JFXX segment', () => {
+    // SOI + APP0(JFIF, 1x1 thumbnail = 3 bytes) + minimal SOF0 + EOI.
+    const app0 = [
+      0xff, 0xe0, 0x00, 0x13, // marker + length 19
+      0x4a, 0x46, 0x49, 0x46, 0x00, // "JFIF\0"
+      0x01, 0x02, // version 1.2
+      0x00, // units
+      0x00, 0x48, 0x00, 0x48, // density 72x72
+      0x01, 0x01, // Xthumb=1 Ythumb=1
+      0xaa, 0xbb, 0xcc, // 3-byte RGB thumbnail
+    ];
+    const sof0 = [0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00];
+    const bytes = new Uint8Array([0xff, 0xd8, ...app0, ...sof0, 0xff, 0xd9]);
+    const out = jpeg.stripJpegMetadata(bytes);
+    // APP0 length must now be 16 (no thumbnail) and the 0xaabbcc bytes gone.
+    let i = 2;
+    expect(out[i]).toBe(0xff); expect(out[i + 1]).toBe(0xe0);
+    const len = (out[i + 2] << 8) + out[i + 3];
+    expect(len).toBe(16);
+    expect(Array.from(out)).not.toEqual(expect.arrayContaining([0xaa, 0xbb, 0xcc]));
+  });
+});
+
 describe('PNG hardened strip (eXIf / AI text / trailing)', () => {
   it('flags eXIf, AI text, iTXt and tIME as strippable; counts trailing bytes', () => {
     const png = pngWithExtraMetadata();

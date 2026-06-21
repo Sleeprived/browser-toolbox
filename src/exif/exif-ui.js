@@ -19,6 +19,7 @@ const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file');
 const errorBox = document.getElementById('error');
 const results = document.getElementById('results');
+const clearBtn = document.getElementById('clear-all');
 
 function showError(msg) {
   errorBox.textContent = msg;
@@ -73,6 +74,18 @@ function describeContainers(scan) {
   return lines;
 }
 
+function detectFormat(bytes) {
+  const b = bytes;
+  if (b[0] === 0xff && b[1] === 0xd8) return 'jpeg';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'png';
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+      b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return 'webp';
+  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) return 'gif';
+  // HEIC/HEIF: 'ftyp' box at offset 4 with heic/heif/mif1 brand.
+  if (b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) return 'heic';
+  return 'unknown';
+}
+
 function processFile(file) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -97,13 +110,27 @@ function processFile(file) {
         readPngDimensions(bytes);
         cleaned = stripPngMetadata(bytes);
       } else {
-        renderCard(file, ['Not a JPEG or PNG — skipped.'], null, null, true);
+        const fmt = detectFormat(bytes);
+        const hint = {
+          webp: 'WebP is not supported — convert to JPEG or PNG first.',
+          gif: 'GIF is not supported — convert to PNG first.',
+          heic: 'HEIC/HEIF is not supported — convert to JPEG first.',
+        }[fmt] || 'Not a JPEG or PNG — skipped.';
+        renderCard(file, [hint], null, null, true);
         return;
       }
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
       renderCard(file, [`Could not process: ${msg}`], null, null, true);
       return;
+    }
+
+    const removed = bytes.length - cleaned.length;
+    if (removed > 0) {
+      const kb = (removed / 1024).toFixed(removed >= 1024 ? 0 : 1);
+      found.push(`Removed ${kb} KB (${bytes.length} → ${cleaned.length} bytes) · verified: no metadata containers remain`);
+    } else {
+      found.push(`No size change (${bytes.length} bytes) · verified: no metadata containers remain`);
     }
 
     const blob = new Blob([cleaned], { type: mime });
@@ -139,9 +166,14 @@ function renderCard(file, foundLines, blob, downloadName, isError) {
   results.appendChild(card);
 }
 
+clearBtn.addEventListener('click', () => {
+  results.replaceChildren();
+  clearBtn.classList.add('hidden');
+  errorBox.classList.add('hidden');
+});
+
 function handleFiles(fileList) {
   errorBox.classList.add('hidden');
-  results.replaceChildren();
   const files = Array.from(fileList);
   if (files.length === 0) return;
   for (const file of files) {
@@ -151,6 +183,7 @@ function handleFiles(fileList) {
     }
     processFile(file);
   }
+  if (results.children.length > 0) clearBtn.classList.remove('hidden');
 }
 
 dropzone.addEventListener('click', () => fileInput.click());

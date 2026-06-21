@@ -193,7 +193,24 @@ function rebuildJpegAllowlist(bytes) {
     // Length-bearing segment.
     const len = (bytes[i] << 8) + bytes[i + 1];
     const segEnd = i + len;
-    if (isStructuralMarker(marker)) {
+    if (marker === 0xe0) {
+      // APP0: keep a minimal 16-byte JFIF (density/units) but drop any embedded
+      // thumbnail; drop JFXX (thumbnail-only) and any other APP0 entirely.
+      const isJfif = bytes[i + 2] === 0x4a && bytes[i + 3] === 0x46 &&
+        bytes[i + 4] === 0x49 && bytes[i + 5] === 0x46 && bytes[i + 6] === 0x00;
+      if (isJfif) {
+        parts.push(Uint8Array.of(
+          0xff, 0xe0, 0x00, 0x10, // length 16
+          0x4a, 0x46, 0x49, 0x46, 0x00, // "JFIF\0"
+          bytes[i + 7], bytes[i + 8], // version
+          bytes[i + 9], // units
+          bytes[i + 10], bytes[i + 11], // Xdensity
+          bytes[i + 12], bytes[i + 13], // Ydensity
+          0x00, 0x00, // Xthumb=0 Ythumb=0
+        ));
+      }
+      // else: JFXX or unknown APP0 — drop it.
+    } else if (isStructuralMarker(marker)) {
       parts.push(bytes.subarray(markerStart, segEnd));
     }
     i = segEnd;
