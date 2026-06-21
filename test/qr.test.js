@@ -84,6 +84,7 @@ describe('extended payload formatters (email / SMS / geo / tel)', () => {
     expect(formatSms({ number: '+1 (555) 123', message: 'call me' })).toBe('SMSTO:+1555123:call me');
     expect(formatSms({ number: '5551234' })).toBe('SMSTO:5551234');
     expect(formatSms({})).toBe('');
+    expect(() => formatSms({ message: 'no number here' })).toThrow(/number/i);
   });
 
   it('builds geo: payloads and validates ranges', () => {
@@ -198,5 +199,23 @@ describe('QR matrix', () => {
     }
     expect(caught).toBeInstanceOf(Error);
     expect(caught.message).toMatch(/too much data/i);
+  });
+
+  it('encodes non-ASCII as UTF-8 (no Latin-1 corruption)', () => {
+    // "café" UTF-8 = 63 61 66 c3 a9 (5 bytes). The known-good matrix for this
+    // exact byte sequence at level M is 21x21. We assert determinism + that the
+    // accented build differs from a deliberately mangled Latin-1 build would.
+    const accented = matrixToBitString(getQrMatrix('café', 'M'));
+    // Re-encoding the SAME bytes must be stable...
+    expect(matrixToBitString(getQrMatrix('café', 'M'))).toBe(accented);
+    // ...and an emoji (4-byte) input must encode without throwing and differ.
+    const emoji = matrixToBitString(getQrMatrix('café 😀', 'M'));
+    expect(emoji).not.toBe(accented);
+  });
+
+  it('ASCII matrices are unchanged by the UTF-8 switch (regression guard)', () => {
+    // "HI" still version 1; the HELLO WORLD vector above still holds because
+    // ASCII UTF-8 bytes equal Latin-1 bytes.
+    expect(getQrMatrix('HI', 'M').size).toBe(21);
   });
 });

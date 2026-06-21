@@ -78,6 +78,7 @@ export function formatSms(opts) {
   const num = String(number).replace(/[^\d+]/g, '');
   const msg = String(message).replace(/[\r\n]+/g, ' ').trim();
   if (num === '' && msg === '') return '';
+  if (num === '' && msg !== '') throw new Error('Enter a phone number for the SMS.');
   return msg ? `SMSTO:${num}:${msg}` : `SMSTO:${num}`;
 }
 

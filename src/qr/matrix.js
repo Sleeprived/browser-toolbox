@@ -20,6 +20,12 @@ export function getQrMatrix(text, ecl = 'M') {
   if (text == null || text === '') throw new Error('Nothing to encode');
 
   const qrcode = getFactory();
+  // The vendored library defaults to a Latin-1 byte encoder, which corrupts any
+  // non-ASCII input. Switch to its UTF-8 encoder (idempotent; ASCII bytes are
+  // identical so existing matrix vectors are unaffected).
+  if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) {
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+  }
   const qr = qrcode(0, ecl);
   try {
     qr.addData(String(text));

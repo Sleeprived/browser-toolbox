@@ -130,8 +130,11 @@ function matrixToSvg(matrix) {
       if (modules[r][c]) rects += `<rect x="${c + m}" y="${r + m}" width="1" height="1"/>`;
     }
   }
+  const target = Number((document.getElementById('size') || {}).value) || 512;
+  const px = Math.max(total, Math.floor(target / total) * total);
   return `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" shape-rendering="crispEdges">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" ` +
+    `viewBox="0 0 ${total} ${total}" shape-rendering="crispEdges">` +
     `<rect width="${total}" height="${total}" fill="${bgInput.value}"/>` +
     `<g fill="${fgInput.value}">${rects}</g></svg>`;
 }
