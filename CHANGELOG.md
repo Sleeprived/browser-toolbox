@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-21 — v1.2.1
+
+### Added
+- **Continuous integration** (`.github/workflows/ci.yml`): runs the Vitest suite
+  on every push and pull request (Node 20).
+- **Wi-Fi QR warning**: the QR generator now warns that a Wi-Fi password is stored
+  in the code as plain text and is readable by anyone who scans the code.
+
+### Changed
+- **Service worker bumped to v5** — delivers the QR page update to installed users.
+- `NOTICE` now records the exact vendored library versions (qrcode-generator 2.0.4,
+  piexifjs 1.0.6).
+
 ## 2026-06-21 — v1.2.0
 
 ### Added
