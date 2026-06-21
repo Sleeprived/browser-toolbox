@@ -40,6 +40,12 @@ function showResult(expr) {
       li.textContent = fmt.format(d); // formatted in the browser's local timezone
       runsEl.appendChild(li);
     }
+    if (runs.length > 0 && runs.length < 5) {
+      const li = document.createElement('li');
+      li.className = 'lead';
+      li.textContent = `Only ${runs.length} upcoming run${runs.length === 1 ? '' : 's'} fall within the search window — this schedule is rare.`;
+      runsEl.appendChild(li);
+    }
   }
   errorBox.classList.add('hidden');
   resultBox.classList.remove('hidden');

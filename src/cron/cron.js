@@ -155,18 +155,44 @@ export function nextRuns(cronOrExpr, from = new Date(), count = 5) {
     if (minDom > maxAllowedDay) return [];
   }
 
-  // Start at the beginning of the next whole minute after `from`.
-  let cursor = Math.floor(fromMs / 60000) * 60000 + 60000;
-  const runs = [];
-  // Cap the search at ~5 years of minutes to avoid hanging on impossible dates.
-  const maxIterations = 5 * 366 * 24 * 60;
-  let i = 0;
+  // Day-then-time search: skip whole non-matching days instead of scanning every
+  // minute of multi-year gaps. Keeps the Feb-29 / rare-schedule cases correct and fast.
+  const dayMatches = (d) => {
+    if (!cron.month.values.has(d.getUTCMonth() + 1)) return false;
+    const domMatch = cron.dom.values.has(d.getUTCDate());
+    const dowMatch = cron.dow.values.has(d.getUTCDay());
+    if (cron.domRestricted && cron.dowRestricted) return domMatch || dowMatch;
+    if (cron.domRestricted) return domMatch;
+    if (cron.dowRestricted) return dowMatch;
+    return true;
+  };
 
-  while (runs.length < count && i < maxIterations) {
-    const d = new Date(cursor);
-    if (matches(cron, d)) runs.push(d);
-    cursor += 60000;
-    i++;
+  const minutes = [...cron.minute.values].sort((a, b) => a - b);
+  const hours = [...cron.hour.values].sort((a, b) => a - b);
+
+  // Start at the next whole minute after `from`.
+  let cursor = new Date(Math.floor(fromMs / 60000) * 60000 + 60000);
+  const runs = [];
+  const maxDays = 366 * 20; // generous bound (~20 years) to cover leap-only schedules
+  let dayCount = 0;
+
+  while (runs.length < count && dayCount < maxDays) {
+    if (dayMatches(cursor)) {
+      const y = cursor.getUTCFullYear();
+      const mo = cursor.getUTCMonth();
+      const da = cursor.getUTCDate();
+      for (const h of hours) {
+        for (const mi of minutes) {
+          const t = Date.UTC(y, mo, da, h, mi);
+          if (t >= cursor.getTime()) runs.push(new Date(t));
+          if (runs.length >= count) break;
+        }
+        if (runs.length >= count) break;
+      }
+    }
+    // Advance to 00:00 of the next UTC day.
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+    dayCount++;
   }
   return runs;
 }
@@ -204,6 +230,14 @@ function describeTime(cron) {
   }
   if (hour.step && minVals.length === 1) {
     return `at minute ${minVals[0]}, every ${hour.step} hours`;
+  }
+  const minContig = contiguous(minVals) && minVals.length > 1;
+  const hourContig = contiguous(hourVals) && hourVals.length > 1;
+  if (minContig && hourVals.length === 1) {
+    return `at minute ${minVals[0]} through ${minVals[minVals.length - 1]} past ${pad2(hourVals[0])}:00`;
+  }
+  if (minVals.length === 1 && hourContig) {
+    return `at minute ${minVals[0]} past hours ${hourVals[0]} through ${hourVals[hourVals.length - 1]}`;
   }
   // Generic fallback.
   const minPart = min.all ? 'every minute' : `minute ${listJoin(minVals.map(String))}`;

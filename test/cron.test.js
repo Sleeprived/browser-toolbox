@@ -65,6 +65,8 @@ describe('describeCron', () => {
     '0 0 1 1 *': 'At 00:00, on day 1 of the month, in January.',
     '@hourly': 'At minute 0 of every hour, every day.',
     '0 0 13 * 5': 'At 00:00, on day 13 of the month or only on Friday.',
+    '0-30 9 * * *': 'At minute 0 through 30 past 09:00, every day.',
+    '0 9-17 * * *': 'At minute 0 past hours 9 through 17, every day.',
   };
   for (const [expr, text] of Object.entries(expectations)) {
     it(`describes "${expr}"`, () => {
@@ -126,5 +128,21 @@ describe('nextRuns (UTC, deterministic)', () => {
     for (let i = 1; i < runs.length; i++) {
       expect(runs[i].getTime()).toBeGreaterThan(runs[i - 1].getTime());
     }
+  });
+
+  it('finds leap-day runs without undercounting (Feb 29)', () => {
+    const runs = nextRuns('0 12 29 2 *', new Date('2026-01-01T00:00:00Z'), 3)
+      .map((d) => d.toISOString());
+    expect(runs).toEqual([
+      '2028-02-29T12:00:00.000Z',
+      '2032-02-29T12:00:00.000Z',
+      '2036-02-29T12:00:00.000Z',
+    ]);
+  });
+
+  it('is fast even for sparse schedules', () => {
+    const start = Date.now();
+    nextRuns('0 12 29 2 *', new Date('2026-01-01T00:00:00Z'), 5);
+    expect(Date.now() - start).toBeLessThan(50);
   });
 });
