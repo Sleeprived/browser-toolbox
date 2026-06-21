@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
-  <meta name="theme-color" content="#15171c" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <title>Cron Explainer — Browser Toolbox</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/img/icon-192.png" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="bar">
       <a class="home" href="index.html">&#8592; Browser Toolbox</a>
@@ -19,7 +21,7 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>Cron Explainer</h1>
     <p class="lead">Translate a cron schedule into plain English and preview its next run times.</p>
@@ -35,13 +37,13 @@
       </div>
     </div>
 
-    <div id="error" class="msg error hidden"></div>
+    <div id="error" class="msg error hidden" role="alert"></div>
 
     <div id="result" class="card hidden">
       <h2>In plain English</h2>
-      <p id="description" class="lead"></p>
+      <p id="description" class="lead" aria-live="polite"></p>
       <h2>Next 5 runs <span id="tzlabel" class="lead"></span></h2>
-      <ul id="next-runs" class="next-runs"></ul>
+      <ul id="next-runs" class="next-runs" aria-live="polite"></ul>
     </div>
 
     <div class="privacy-note">

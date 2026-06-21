@@ -76,9 +76,29 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return; // never touch cross-origin
+  if (url.origin !== self.location.origin) return;
 
-  // Cache-first, falling back to network; cache successful same-origin GETs.
+  // Navigations: stale-while-revalidate so a new deploy is fetched in the
+  // background and served on the NEXT load (one-load-behind, documented in README).
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        const network = fetch(req)
+          .then((resp) => {
+            if (resp && resp.ok && resp.type === 'basic') {
+              const clone = resp.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            }
+            return resp;
+          })
+          .catch(() => cached || caches.match(new URL('index.html', self.registration.scope).href) || Response.error());
+        return cached || network;
+      }),
+    );
+    return;
+  }
+
+  // Static assets: cache-first.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
@@ -90,13 +110,7 @@ self.addEventListener('fetch', (event) => {
           }
           return resp;
         })
-        .catch(() => {
-          // Offline and not cached: for navigations, serve the home page.
-          if (req.mode === 'navigate') {
-            return caches.match(new URL('index.html', self.registration.scope).href);
-          }
-          return Response.error();
-        });
+        .catch(() => Response.error());
     }),
   );
 });

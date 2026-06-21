@@ -234,3 +234,28 @@ footer.site-footer a { color: var(--accent); }
 
 .next-runs { list-style: none; padding: 0; }
 .next-runs li { font-family: ui-monospace, monospace; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+
+.skip-link {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--accent, #5b9dff);
+  color: #000;
+  padding: 8px 12px;
+  z-index: 100;
+}
+.skip-link:focus { left: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
+
+/* Palette hex affordance is now a <button>; reset native chrome. */
+button.hex {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}

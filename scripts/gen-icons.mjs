@@ -38,12 +38,6 @@ function makeIcon(size, bg, fg, frac) {
     const lx = x - off;
     const ly = y - off;
     // round the four corners
-    const corners = [
-      [radius, radius],
-      [sq - radius, radius],
-      [radius, sq - radius],
-      [sq - radius, sq - radius],
-    ];
     if ((lx < radius || lx > sq - radius) && (ly < radius || ly > sq - radius)) {
       const cx = lx < radius ? radius : sq - radius;
       const cy = ly < radius ? radius : sq - radius;

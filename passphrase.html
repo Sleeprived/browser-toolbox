@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
-  <meta name="theme-color" content="#15171c" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <title>Passphrase Generator — Browser Toolbox</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/img/icon-192.png" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="bar">
       <a class="home" href="index.html">&#8592; Browser Toolbox</a>
@@ -19,7 +21,7 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>Passphrase Generator</h1>
     <p class="lead">Memorable, strong passphrases from the EFF diceware wordlist &mdash; generated with your browser's secure randomness.</p>
@@ -48,8 +50,8 @@
       </div>
       <label for="out">Your passphrase</label>
       <input type="text" id="out" class="mono" readonly />
-      <p id="entropy" class="lead"></p>
-      <div id="copied" class="msg ok hidden">Copied to clipboard.</div>
+      <p id="entropy" class="lead" aria-live="polite"></p>
+      <div id="copied" class="msg ok hidden" aria-live="polite">Copied to clipboard.</div>
     </div>
 
     <h2>Password strength meter</h2>
@@ -58,7 +60,7 @@
       <input type="password" id="pw" class="mono" autocomplete="off" spellcheck="false" />
       <button class="btn secondary" id="reveal" type="button" aria-pressed="false">Show</button>
       <div class="meter"><span id="meter-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></span></div>
-      <p id="strength" class="lead">&nbsp;</p>
+      <p id="strength" class="lead" aria-live="polite">&nbsp;</p>
     </div>
 
     <div class="privacy-note">

@@ -2,33 +2,35 @@
 // Theme defaults to dark on every load and the toggle does NOT persist (stateless
 // by design — see spec Decisions Locked).
 
-function initThemeToggle() {
-  const btn = document.querySelector('.theme-toggle');
+export function initThemeToggle(doc = document) {
+  const btn = doc.querySelector('.theme-toggle');
   if (!btn) return;
   const apply = (light) => {
-    if (light) document.documentElement.setAttribute('data-theme', 'light');
-    else document.documentElement.removeAttribute('data-theme');
+    if (light) doc.documentElement.setAttribute('data-theme', 'light');
+    else doc.documentElement.removeAttribute('data-theme');
+    // Static accessible name; aria-pressed reflects whether light mode is ON.
     btn.textContent = light ? 'Dark' : 'Light';
+    btn.setAttribute('aria-label', 'Toggle light theme');
     btn.setAttribute('aria-pressed', String(light));
   };
   apply(false);
   btn.addEventListener('click', () => {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const isLight = doc.documentElement.getAttribute('data-theme') === 'light';
     apply(!isLight);
   });
 }
 
-function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  // Resolve sw.js relative to the site root (works under a project subpath on Pages).
+export function registerServiceWorker() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
   const base = new URL('.', document.baseURI);
   const swUrl = new URL('sw.js', base).href;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(swUrl).catch(() => {
-      /* offline support is best-effort; ignore registration errors */
-    });
+    navigator.serviceWorker.register(swUrl).catch(() => {});
   });
 }
 
-initThemeToggle();
-registerServiceWorker();
+// Auto-run in the browser; tests import the functions directly.
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+  initThemeToggle();
+  registerServiceWorker();
+}

@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
   <meta name="description" content="Six private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, CSV/JSON, color palettes, cron. Everything runs in your browser." />
-  <meta name="theme-color" content="#15171c" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <title>Browser Toolbox</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/img/icon-192.png" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="bar">
       <a class="home" href="index.html">Browser Toolbox</a>
@@ -20,7 +22,7 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main id="main" class="wrap">
     <noscript>
       <div class="msg error">These tools run entirely in your browser and require JavaScript to be enabled.</div>
     </noscript>

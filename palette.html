@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
-  <meta name="theme-color" content="#15171c" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
   <title>Color Palette Extractor — Browser Toolbox</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="assets/img/icon-192.png" />
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="bar">
       <a class="home" href="index.html">&#8592; Browser Toolbox</a>
@@ -19,7 +21,7 @@
     </div>
   </header>
 
-  <main class="wrap">
+  <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>Color Palette Extractor</h1>
     <p class="lead">Pull the dominant colors out of any image. Export them as hex, CSS variables, or JSON.</p>
@@ -38,14 +40,14 @@
       </div>
     </div>
 
-    <div id="error" class="msg error hidden"></div>
-    <div id="palette-info" class="msg warn hidden"></div>
+    <div id="error" class="msg error hidden" role="alert"></div>
+    <div id="palette-info" class="msg warn hidden" role="alert"></div>
 
     <div id="result" class="card hidden">
       <div class="preview">
         <img id="preview-img" alt="Uploaded image preview" />
         <div>
-          <div class="swatches" id="swatches"></div>
+          <div class="swatches" id="swatches" aria-live="polite"></div>
           <p id="copied" class="lead hidden" aria-live="polite"></p>
         </div>
       </div>
