@@ -55,9 +55,9 @@
     <h2>Password strength meter</h2>
     <div class="card">
       <label for="pw">Type or paste a password to rate it (checked entirely offline)</label>
-      <input type="password" id="pw" autocomplete="off" spellcheck="false" />
+      <input type="password" id="pw" class="mono" autocomplete="off" spellcheck="false" />
       <button class="btn secondary" id="reveal" type="button" aria-pressed="false">Show</button>
-      <div class="meter"><div id="meter-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></div></div>
+      <div class="meter"><span id="meter-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="no password entered"></span></div>
       <p id="strength" class="lead">&nbsp;</p>
     </div>
 
