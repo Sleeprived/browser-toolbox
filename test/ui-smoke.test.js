@@ -146,3 +146,17 @@ describe('jwt UI', () => {
     expect(document.getElementById('jwt-error').classList.contains('hidden')).toBe(false);
   });
 });
+
+describe('image UI', () => {
+  it('module loads and wires controls without touching canvas at import', async () => {
+    loadBody('image.html');
+    await import('../src/image/image-ui.js');
+    expect(document.getElementById('dropzone')).not.toBeNull();
+    expect(document.getElementById('img-apply')).not.toBeNull();
+    // Quality label updates on input (no canvas needed).
+    const q = document.getElementById('img-quality');
+    q.value = '0.5';
+    q.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('img-quality-val').textContent).toBe('0.5');
+  });
+});

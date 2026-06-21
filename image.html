@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <title>Image Resizer &amp; Compressor — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Image Resizer &amp; Compressor</h1>
+    <p class="lead">Resize and compress JPEG, PNG, or WebP images in your browser. Phone-photo rotation is auto-corrected. Nothing is uploaded.</p>
+
+    <div class="card">
+      <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose or drop an image">
+        Drop an image here, or click to choose
+      </div>
+      <input type="file" id="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+    </div>
+
+    <div id="image-error" class="msg error hidden" role="alert"></div>
+
+    <div id="image-result" class="card hidden">
+      <div class="row">
+        <div><label for="img-width">Width (px)</label><input type="number" id="img-width" min="1" /></div>
+        <div><label for="img-height">Height (px)</label><input type="number" id="img-height" min="1" /></div>
+      </div>
+      <div class="check"><input type="checkbox" id="img-lock" checked /><label for="img-lock">Lock aspect ratio</label></div>
+      <div class="row">
+        <div>
+          <label for="img-format">Output format</label>
+          <select id="img-format">
+            <option value="keep">Keep original</option>
+            <option value="image/jpeg">JPEG</option>
+            <option value="image/png">PNG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <div>
+          <label for="img-quality">Quality: <span id="img-quality-val">0.85</span></label>
+          <input type="range" id="img-quality" min="0.3" max="1" step="0.05" value="0.85" />
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="img-apply">Resize</button>
+        <button class="btn secondary hidden" type="button" id="img-download">Download</button>
+      </div>
+      <p id="img-stats" class="lead" aria-live="polite"></p>
+      <div class="preview"><img id="img-preview" alt="Resized preview" /></div>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Re-encoding strips embedded metadata automatically. Your image never leaves the page.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script src="assets/vendor/piexif.js"></script>
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/image/image-ui.js"></script>
+</body>
+</html>
