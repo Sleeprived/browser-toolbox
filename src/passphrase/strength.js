@@ -103,6 +103,11 @@ function hasKeyboardWalk(password, minRun = 4) {
 
 // Detect a common password possibly disguised by case, substitutions, or
 // leading/trailing digits/symbols. Returns 'exact', 'affix', or null.
+//
+// Known, intentional limitation (this is a rough guide, not a full cracker):
+// the affix trim only strips leading/trailing NON-letter padding. Interior
+// padding ("pass123word") and letter padding ("xpasswordx") are NOT unwrapped,
+// so those disguises read as their own tokens rather than the common word.
 function commonMatch(password) {
   const lower = password.toLowerCase();
   if (COMMON_PASSWORDS.has(lower)) return 'exact';

@@ -207,6 +207,87 @@ describe('JPEG JFIF thumbnail normalization', () => {
   });
 });
 
+// ---- M3: metadata placed AFTER the first scan must NOT survive the strip, and
+// detection (scanJpegMetadata) must agree with removal (stripJpegMetadata). The
+// first SOS is not the end of the JPEG walk. ----
+
+// Minimal structurally-walkable JPEG pieces. SOF0 declares 2x2 so
+// readJpegDimensions succeeds. Scan data is a short non-marker blob.
+const SOF0_2x2 = [0xff, 0xc0, 0x00, 0x0b, 0x08, 0x00, 0x02, 0x00, 0x02, 0x01, 0x01, 0x11, 0x00];
+const SOS_HEADER = [0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00];
+const SCAN_DATA = [0x12, 0x34, 0x56, 0xff, 0x00, 0x65]; // includes a stuffed 0xff00
+
+describe('JPEG metadata after the first scan (M3)', () => {
+  it('strips a COM segment placed after the scan data before EOI, and scan/strip agree', () => {
+    const com = jpegSegment(0xfe, 'COM_AFTER_SCAN_SECRET');
+    const bytes = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      Uint8Array.from(SOS_HEADER),
+      Uint8Array.from(SCAN_DATA),
+      com,                       // comment AFTER the scan, before EOI
+      Uint8Array.of(0xff, 0xd9), // EOI
+    ]);
+    // Detection must see the comment even though it is past the first SOS.
+    expect(jpeg.scanJpegMetadata(bytes).comment).toBe(true);
+
+    const cleaned = jpeg.stripJpegMetadata(bytes);
+    const out = asLatin1(cleaned);
+    expect(out.includes('COM_AFTER_SCAN_SECRET')).toBe(false); // comment gone
+    // Removal and detection agree: a re-scan finds nothing.
+    expect(jpeg.scanJpegMetadata(cleaned).comment).toBe(false);
+    // The image is still decodable.
+    expect(jpeg.readJpegDimensions(cleaned)).toEqual({ width: 2, height: 2 });
+  });
+
+  it('strips an APP1/Exif segment placed between two SOS scans', () => {
+    const exif = jpegSegment(0xe1, 'Exif\0\0BETWEEN_SCANS_SECRET');
+    const bytes = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      Uint8Array.from(SOS_HEADER),   // first scan
+      Uint8Array.from(SCAN_DATA),
+      exif,                          // EXIF between the two scans
+      Uint8Array.from(SOS_HEADER),   // second scan
+      Uint8Array.from(SCAN_DATA),
+      Uint8Array.of(0xff, 0xd9),     // EOI
+    ]);
+    // Detection sees the EXIF that lives after the first scan.
+    expect(jpeg.scanJpegMetadata(bytes).exif).toBe(true);
+
+    const cleaned = jpeg.stripJpegMetadata(bytes);
+    const out = asLatin1(cleaned);
+    expect(out.includes('BETWEEN_SCANS_SECRET')).toBe(false); // EXIF payload gone
+    // Both scans must survive (two SOS markers remain).
+    let sosCount = 0;
+    for (let k = 0; k + 1 < cleaned.length; k++) {
+      if (cleaned[k] === 0xff && cleaned[k + 1] === 0xda) sosCount++;
+    }
+    expect(sosCount).toBe(2);
+    // readJpegDimensions still succeeds.
+    expect(jpeg.readJpegDimensions(cleaned)).toEqual({ width: 2, height: 2 });
+  });
+});
+
+describe('JPEG GPS zero-denominator guard (minor bug)', () => {
+  it('readExifSummary returns null GPS instead of "NaN, NaN" on a zero denominator', () => {
+    // Build EXIF with a malformed GPS latitude (denominator 0) and re-read it.
+    const exifObj = {
+      '0th': {}, Exif: {}, Interop: {}, '1st': {}, thumbnail: null,
+      GPS: {
+        1: 'N', 2: [[40, 1], [26, 0], [0, 1]], // minutes denominator = 0 -> NaN
+        3: 'W', 4: [[79, 1], [58, 1], [0, 1]],
+      },
+    };
+    const exifBytes = piexifLib.dump(exifObj);
+    // Insert into the base JPEG so readExifSummary can load it.
+    const base = jpeg.bytesToBinaryString(b64ToBytes(JPEG_WITH_EXIF_B64));
+    const withGps = piexifLib.insert(exifBytes, base);
+    const bytes = jpeg.binaryStringToBytes(withGps);
+    expect(jpeg.readExifSummary(bytes).gps).toBeNull();
+  });
+});
+
 describe('PNG hardened strip (eXIf / AI text / trailing)', () => {
   it('flags eXIf, AI text, iTXt and tIME as strippable; counts trailing bytes', () => {
     const png = pngWithExtraMetadata();

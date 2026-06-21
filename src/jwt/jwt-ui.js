@@ -37,32 +37,37 @@ function render() {
     return;
   }
   current = decoded;
-  headerEl.textContent = JSON.stringify(decoded.header, null, 2);
-  payloadEl.textContent = JSON.stringify(decoded.payload, null, 2);
+  try {
+    headerEl.textContent = JSON.stringify(decoded.header, null, 2);
+    payloadEl.textContent = JSON.stringify(decoded.payload, null, 2);
 
-  claimsEl.replaceChildren();
-  const status = expiryStatus(decoded.payload, Date.now());
-  for (const c of describeClaims(decoded.payload, Date.now())) {
-    const li = document.createElement('li');
-    li.textContent = `${c.label}: ${c.iso} (${c.relative})`;
-    claimsEl.appendChild(li);
-  }
-  if (status !== 'active') {
-    const li = document.createElement('li');
-    li.textContent = status === 'expired' ? 'This token has EXPIRED.' : 'This token is NOT YET valid.';
-    claimsEl.appendChild(li);
-  }
+    claimsEl.replaceChildren();
+    const status = expiryStatus(decoded.payload, Date.now());
+    for (const c of describeClaims(decoded.payload, Date.now())) {
+      const li = document.createElement('li');
+      li.textContent = `${c.label}: ${c.iso} (${c.relative})`;
+      claimsEl.appendChild(li);
+    }
+    if (status !== 'active') {
+      const li = document.createElement('li');
+      li.textContent = status === 'expired' ? 'This token has EXPIRED.' : 'This token is NOT YET valid.';
+      claimsEl.appendChild(li);
+    }
 
-  flagsEl.replaceChildren();
-  for (const w of securityFlags(decoded.header, decoded.payload)) {
-    const d = document.createElement('div');
-    d.className = 'msg warn';
-    d.textContent = w;
-    flagsEl.appendChild(d);
-  }
+    flagsEl.replaceChildren();
+    for (const w of securityFlags(decoded.header, decoded.payload)) {
+      const d = document.createElement('div');
+      d.className = 'msg warn';
+      d.textContent = w;
+      flagsEl.appendChild(d);
+    }
 
-  errorBox.classList.add('hidden');
-  resultBox.classList.remove('hidden');
+    errorBox.classList.add('hidden');
+    resultBox.classList.remove('hidden');
+  } catch (e) {
+    current = null;
+    showError('Could not display that token.');
+  }
 }
 
 const HASH = { HS256: 'SHA-256', HS384: 'SHA-384', HS512: 'SHA-512' };

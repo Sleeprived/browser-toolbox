@@ -89,6 +89,32 @@ function isStructuralMarker(marker) {
   );
 }
 
+// Given the offset of the first byte of entropy-coded scan data (just past an SOS
+// header), walk to the next REAL marker, honoring byte-stuffing (0xFF00), restart
+// markers (0xFFD0–D7) and fill bytes (0xFFFF) as part of the scan. Returns the
+// offset of the 0xFF that begins the next real marker (or n if the stream ends).
+function endOfScanData(bytes, start) {
+  const n = bytes.length;
+  let k = start;
+  while (k < n - 1) {
+    if (bytes[k] === 0xff) {
+      const mk = bytes[k + 1];
+      // 0xFF (fill) is a single padding byte: skip it and re-examine the next
+      // 0xFF against the byte that follows.
+      if (mk === 0xff) { k++; continue; }
+      // 0x00 (stuffing) and 0xD0–0xD7 (restart) belong to the scan.
+      if (mk === 0x00 || (mk >= 0xd0 && mk <= 0xd7)) {
+        k += 2;
+        continue;
+      }
+      // Any other value is the next real marker and ends this scan.
+      return k;
+    }
+    k++;
+  }
+  return n;
+}
+
 // Walk segments and report which metadata containers are present, so the UI can
 // tell the user exactly what is being removed. Returns booleans.
 export function scanJpegMetadata(bytes) {
@@ -112,17 +138,13 @@ export function scanJpegMetadata(bytes) {
       break;
     }
     if (marker === 0xda) {
-      // SOS: header metadata only appears before this, but trailing data appears
-      // after the EOI that ends the scan. Locate EOI past the entropy-coded data.
+      // SOS: skip the entropy-coded scan data and resume scanning at the next real
+      // marker. Metadata segments (APPn/COM) can legally appear AFTER a scan in a
+      // progressive/multi-scan JPEG (or be crafted there), so we must not stop at
+      // the first SOS. The EOI case below flags any trailing data after the image.
       const sosLen = (bytes[i] << 8) + bytes[i + 1];
-      let k = i + sosLen;
-      let eoi = -1;
-      while (k < n - 1) {
-        if (bytes[k] === 0xff && bytes[k + 1] === 0xd9) { eoi = k; break; }
-        k++;
-      }
-      if (eoi !== -1 && eoi + 2 < n) found.trailing = true;
-      break;
+      i = endOfScanData(bytes, i + sosLen);
+      continue;
     }
     if ((marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) continue; // standalone
     const len = (bytes[i] << 8) + bytes[i + 1];
@@ -171,23 +193,17 @@ function rebuildJpegAllowlist(bytes) {
       continue;
     }
     if (marker === 0xda) {
-      // Start of Scan: copy the SOS header and the entropy-coded image data up to
-      // (and including) the EOI marker. Drop anything after EOI.
+      // Start of Scan: copy the SOS header AND its entropy-coded data verbatim, but
+      // do NOT stop — a progressive/multi-scan JPEG (or a crafted file) can place
+      // more scans and even APPn/COM segments after this scan. Resume the outer
+      // allowlist loop at the next real marker so those are filtered too. The EOI
+      // case emits the final EOI and stops; trailing bytes after it are dropped.
       const len = (bytes[i] << 8) + bytes[i + 1];
-      let k = i + len; // first byte of entropy-coded data
-      let eoi = -1;
-      while (k < n - 1) {
-        if (bytes[k] === 0xff) {
-          const mk = bytes[k + 1];
-          // 0x00 (stuffing), 0xD0–0xD7 (restart) and 0xFF (fill) are part of the
-          // scan; any other marker that is EOI ends the image.
-          if (mk === 0xd9) { eoi = k; break; }
-        }
-        k++;
-      }
-      const end = eoi !== -1 ? eoi + 2 : n;
+      const dataStart = i + len; // first byte of entropy-coded data
+      const end = endOfScanData(bytes, dataStart); // offset of the next real marker (or n)
       parts.push(bytes.subarray(markerStart, end));
-      break;
+      i = end;
+      continue;
     }
 
     // Length-bearing segment.
@@ -236,10 +252,12 @@ export function filterExifKeepOrientation(exifObj) {
 }
 
 function ratToDecimal(rat) {
-  // rat: [[deg,den],[min,den],[sec,den]]
-  const d = rat[0][0] / rat[0][1];
-  const m = rat[1][0] / rat[1][1];
-  const s = rat[2][0] / rat[2][1];
+  // rat: [[deg,den],[min,den],[sec,den]]. A zero denominator would yield NaN;
+  // treat any such component as 0 so the caller can detect a non-finite result.
+  const safeDiv = (num, den) => (den === 0 ? NaN : num / den);
+  const d = safeDiv(rat[0][0], rat[0][1]);
+  const m = safeDiv(rat[1][0], rat[1][1]);
+  const s = safeDiv(rat[2][0], rat[2][1]);
   return d + m / 60 + s / 3600;
 }
 
@@ -268,7 +286,11 @@ export function readExifSummary(bytes) {
       let lon = ratToDecimal(gps[GPS_LON]);
       if (gps[GPS_LAT_REF] === 'S') lat = -lat;
       if (gps[GPS_LON_REF] === 'W') lon = -lon;
-      summary.gps = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+      // A zero denominator (or otherwise malformed rational) yields NaN; never
+      // render "NaN, NaN" — report no GPS instead.
+      summary.gps = (!Number.isFinite(lat) || !Number.isFinite(lon))
+        ? null
+        : `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
     } catch {
       summary.gps = null;
     }

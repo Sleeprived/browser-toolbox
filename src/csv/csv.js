@@ -88,6 +88,15 @@ function needsQuoting(value, delimiter) {
   );
 }
 
+// Neutralize spreadsheet formula injection: a cell whose first character is
+// one of = + - @ \t \r is prefixed with a single apostrophe so spreadsheet
+// apps treat it as text. Export-only — never used on the round-trip path.
+function sanitizeFormula(value) {
+  const s = value == null ? '' : String(value);
+  if (/^[=+\-@\t\r]/.test(s)) return "'" + s;
+  return s;
+}
+
 function quoteCell(value, delimiter) {
   const s = value == null ? '' : String(value);
   if (needsQuoting(s, delimiter)) {
@@ -97,10 +106,16 @@ function quoteCell(value, delimiter) {
 }
 
 // Serialize rows (array of arrays) back into CSV text. Uses \n line endings.
-export function serializeCsv(rows, delimiter = ',') {
+// Pass { sanitizeFormulas: true } only for files written to disk (download),
+// not for the CSV<->JSON round-trip path (it would break fidelity).
+export function serializeCsv(rows, delimiter = ',', { sanitizeFormulas = false } = {}) {
   if (!Array.isArray(rows)) throw new CsvError('Rows must be an array');
   return rows
-    .map((row) => row.map((cell) => quoteCell(cell, delimiter)).join(delimiter))
+    .map((row) =>
+      row
+        .map((cell) => quoteCell(sanitizeFormulas ? sanitizeFormula(cell) : cell, delimiter))
+        .join(delimiter),
+    )
     .join('\n');
 }
 
@@ -125,7 +140,9 @@ export function rowsToObjects(rows) {
   while (rawHeader.length < width) rawHeader.push(`column_${rawHeader.length + 1}`);
   const header = uniqueHeaders(rawHeader);
   const objects = rows.slice(1).map((row) => {
-    const obj = {};
+    // Null prototype so a header literally named "__proto__" becomes a real own
+    // data property instead of hitting the object-literal prototype setter.
+    const obj = Object.create(null);
     header.forEach((key, idx) => {
       obj[key] = row[idx] !== undefined ? row[idx] : '';
     });

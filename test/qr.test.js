@@ -60,6 +60,31 @@ describe('payload formatters', () => {
       .toBe('WIFI:T:WPA;S:S;P:P;H:true;;');
   });
 
+  it('escapes carriage returns in vCard values (no raw CR)', () => {
+    const out = escapeVcard('a\r\nb');
+    expect(out).not.toContain('\r');
+    expect(out).toBe('a\\nb');
+    expect(escapeVcard('a\rb')).toBe('a\\nb');
+  });
+
+  it('falls back to nopass for an unknown WiFi encryption value', () => {
+    expect(formatWifi({ ssid: 'X', password: 'p', encryption: 'evil;injected' }))
+      .toBe('WIFI:T:nopass;S:X;;');
+    expect(formatWifi({ ssid: 'X', password: 'p', encryption: 'WEP' }))
+      .toBe('WIFI:T:WEP;S:X;P:p;;');
+  });
+
+  it('strips whitespace from the email address', () => {
+    expect(formatEmail({ to: ' a@b.com ' })).toBe('mailto:a@b.com');
+    expect(formatEmail({ to: 'a @ b.com' })).toBe('mailto:a@b.com');
+  });
+
+  it('keeps only a leading + in SMS and tel numbers (drops interior +)', () => {
+    expect(formatSms({ number: '+1+555', message: 'hi' })).toBe('SMSTO:+1555:hi');
+    expect(formatTel({ number: '+1+555+123' })).toBe('tel:+1555123');
+    expect(formatTel({ number: '1+555' })).toBe('tel:1555');
+  });
+
   it('escapes vCard special characters', () => {
     expect(escapeVcard('Acme, Inc; HQ')).toBe('Acme\\, Inc\\; HQ');
     const v = formatVcard({ name: 'John; Doe', phone: '+1 555', email: 'j@x.com', org: 'Acme, Inc' });

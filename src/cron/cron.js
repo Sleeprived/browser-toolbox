@@ -220,7 +220,9 @@ function describeTime(cron) {
   const minVals = [...min.values].sort((a, b) => a - b);
 
   if (min.all && hour.all) return 'every minute';
-  if (min.step && hour.all) return `every ${min.step} minutes`;
+  if (min.step && hour.all) {
+    return min.step === 1 ? 'every minute' : `every ${min.step} minutes`;
+  }
   if (minVals.length === 1 && hour.all) {
     return `at minute ${minVals[0]} of every hour`;
   }
@@ -229,7 +231,12 @@ function describeTime(cron) {
     return `at ${pad2(hourVals[0])}:${pad2(minVals[0])}`;
   }
   if (hour.step && minVals.length === 1) {
-    return `at minute ${minVals[0]}, every ${hour.step} hours`;
+    return hour.step === 1
+      ? `at minute ${minVals[0]}, every hour`
+      : `at minute ${minVals[0]}, every ${hour.step} hours`;
+  }
+  if (min.all && hourVals.length === 1) {
+    return `every minute past ${pad2(hourVals[0])}:00`;
   }
   const minContig = contiguous(minVals) && minVals.length > 1;
   const hourContig = contiguous(hourVals) && hourVals.length > 1;

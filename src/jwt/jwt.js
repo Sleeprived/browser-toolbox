@@ -48,7 +48,9 @@ export function describeClaims(payload, nowMs) {
     const v = payload[claim];
     if (typeof v === 'number' && Number.isFinite(v)) {
       const ms = v * 1000;
-      out.push({ claim, label, epoch: v, iso: new Date(ms).toISOString(), relative: relativeTime(ms - nowMs) });
+      const date = new Date(ms);
+      const iso = Number.isNaN(date.getTime()) ? `epoch ${v} (out of representable date range)` : date.toISOString();
+      out.push({ claim, label, epoch: v, iso, relative: relativeTime(ms - nowMs) });
     }
   }
   return out;

@@ -34,3 +34,13 @@ Screen** to install it like an app.
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no
 accounts, no tracking — and it works offline once loaded.
+
+## Updates / Troubleshooting
+The app installs as a PWA and serves the cached build for offline use. After a
+new version is deployed, the cached build is shown first and the update is fetched
+in the background; you get the latest on the **next** load. If something looks
+out of date, just refresh once more.
+
+## Credits
+Passphrase wordlist: [EFF Large Wordlist](https://www.eff.org/dice)
+(CC BY 3.0 US).

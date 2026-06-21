@@ -42,4 +42,10 @@ describe('orientationToTransform', () => {
   it('defaults unknown values to identity', () => {
     expect(orientationToTransform(999)).toEqual({ rotate: 0, flip: false, swap: false });
   });
+  it('maps 5 to a 270° rotation with flip + axis swap', () => {
+    expect(orientationToTransform(5)).toEqual({ rotate: 270, flip: true, swap: true });
+  });
+  it('maps 7 to a 90° rotation with flip + axis swap', () => {
+    expect(orientationToTransform(7)).toEqual({ rotate: 90, flip: true, swap: true });
+  });
 });

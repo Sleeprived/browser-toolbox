@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-06-21 — v1.2.2 — fixes from browser-toolbox-audit-4.md
+
+### Fixed
+- **CSV**: a column header literally named `__proto__` no longer silently drops
+  that column when converting to JSON (rows are built with a null-prototype object).
+- **Palette**: the median-cut quantizer no longer degenerates into near-black
+  slivers on smooth gradients/photos — it splits at the median by default and only
+  overrides for a clearly dominant colour gap.
+- **EXIF**: metadata placed after the first scan (progressive/multi-scan or crafted
+  JPEGs) is now stripped, and "verified clean" is shown only after re-scanning the
+  cleaned file — previously the message was hardcoded and could be false. Corrupt
+  GPS rationals no longer render as "NaN, NaN".
+- **Image**: EXIF orientations 5 and 7 are corrected the right way (were
+  mirrored/rotated wrong); a transparent PNG/WebP exported to JPEG now gets a white
+  background instead of black; huge-pixel images are clamped to avoid an
+  out-of-memory crash.
+- **JWT**: an out-of-range expiry/time claim no longer throws and blanks the result.
+- **Vault**: password history and the live TOTP code are cleared from the DOM on
+  lock; `pagehide`/bfcache restore now fully re-locks and scrubs the decrypted list.
+- **QR**: vCard values escape carriage returns; the Wi-Fi security field is
+  allowlisted; email addresses are whitespace-stripped; phone/SMS numbers keep only
+  a leading `+`.
+- **Encode**: `&nbsp;` decodes to U+00A0 (was an ASCII space); an unknown mode
+  throws instead of silently encoding; numeric refs for surrogates/NUL decode to U+FFFD.
+- **Service worker**: the offline navigation fallback can no longer resolve to `undefined`.
+
+### Changed
+- **Service worker bumped to v6** so the above fixes reach already-installed users.
+- **CSV download** now neutralises spreadsheet-formula cells (leading `= + - @`) with
+  a `'` prefix; the CSV↔JSON round-trip is unchanged.
+- **Cron** descriptions read "every minute"/"every hour" (not "every 1 minutes").
+- **Vault** clipboard message now states the 25s auto-clear is best-effort.
+- **README**: added an Updates/Troubleshooting note and an EFF wordlist credit.
+
+### Notes
+- Tests 242 → 265 (a regression test for every logic fix; new `test/vault.lock.test.js`).
+  Full audit: `an internal audit`. Deferred pending a
+  spec decision: documenting the four unscoped tools (vault/jwt/encode/image) and the
+  palette/passphrase spec-wording in the build spec.
+
 ## 2026-06-21 — v1.2.1
 
 ### Added

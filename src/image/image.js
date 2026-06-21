@@ -31,9 +31,9 @@ export function orientationToTransform(n) {
     case 2: return { rotate: 0, flip: true, swap: false };
     case 3: return { rotate: 180, flip: false, swap: false };
     case 4: return { rotate: 180, flip: true, swap: false };
-    case 5: return { rotate: 90, flip: true, swap: true };
+    case 5: return { rotate: 270, flip: true, swap: true };
     case 6: return { rotate: 90, flip: false, swap: true };
-    case 7: return { rotate: 270, flip: true, swap: true };
+    case 7: return { rotate: 90, flip: true, swap: true };
     case 8: return { rotate: 270, flip: false, swap: true };
     default: return { rotate: 0, flip: false, swap: false };
   }

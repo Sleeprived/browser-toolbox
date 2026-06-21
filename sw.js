@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -106,7 +106,10 @@ self.addEventListener('fetch', (event) => {
             }
             return resp;
           })
-          .catch(() => cached || caches.match(new URL('index.html', self.registration.scope).href) || Response.error());
+          .catch(async () => {
+            const indexUrl = new URL('index.html', self.registration.scope).href;
+            return cached || (await caches.match(indexUrl)) || Response.error();
+          });
         return cached || network;
       }),
     );

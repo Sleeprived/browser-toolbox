@@ -84,6 +84,14 @@ function clearEditorFields() {
   editingTotp = null;
   const td = $('totp-display');
   if (td) td.classList.add('hidden');
+  // Blank any rendered secrets that live outside the editor inputs: prior
+  // plaintext passwords in the history list and the live TOTP code/countdown.
+  // (Cannot use renderHistory([]) — it early-returns before clearing the <li>s.)
+  if ($('history-list')) $('history-list').textContent = '';
+  if ($('history-count')) $('history-count').textContent = '0';
+  if ($('history')) $('history').classList.add('hidden');
+  if ($('totp-code')) $('totp-code').textContent = '';
+  if ($('totp-countdown')) $('totp-countdown').textContent = '';
 }
 
 function lock() {
@@ -138,7 +146,7 @@ async function copyText(text, note = 'Copied') {
   } catch { ok = false; }
   const msg = $('copied-msg');
   if (msg) {
-    msg.textContent = ok ? `${note} — clipboard auto-clears in 25s` : 'Copy failed; select and press Ctrl+C';
+    msg.textContent = ok ? `${note} — will try to clear the clipboard in ~25s (only while this tab stays focused)` : 'Copy failed; select and press Ctrl+C';
     show(msg);
     setTimeout(() => hide(msg), 4000);
   }
@@ -752,7 +760,13 @@ function init() {
   window.addEventListener('beforeunload', (e) => {
     if (state.unlocked && state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
-  window.addEventListener('pagehide', wipeMemory);
+  // On pagehide do a full DOM scrub (lock), not just wipeMemory, so the
+  // decrypted list, editor fields, and master inputs do not linger; also drop
+  // the rendered list so stale Copy-button closures (capturing plaintext) die.
+  window.addEventListener('pagehide', () => { $('entry-list').textContent = ''; lock(); });
+  // If the page is restored from the bfcache while logically locked, re-lock so
+  // no decrypted DOM survives a back/forward restore.
+  window.addEventListener('pageshow', (e) => { if (e.persisted && !state.unlocked) lock(); });
 
   showScreen('locked');
 }

@@ -72,15 +72,19 @@ export function medianCut(pixels, maxColors = 6) {
 
     const bucket = buckets[target];
     bucket.sort((a, b) => a[bestCh] - b[bestCh]);
-    // Split at the largest gap along the chosen channel rather than at the
-    // median index. This cleanly separates distinct color clusters even when
-    // they are unbalanced in size (e.g. a 60/40 split), instead of bleeding one
-    // cluster into the other's bucket.
-    let splitAt = Math.floor(bucket.length / 2);
-    let maxGap = -1;
+    // Hybrid split: start from the median index and only move the cut to a
+    // larger gap along the chosen channel. The 1-step seed for maxGap ignores
+    // the trivial single-value gaps of a smooth gradient (so a ramp splits at
+    // its median instead of peeling one value-run per iteration), while a
+    // clearly-dominant gap still wins to separate distinct clusters even when
+    // they are unbalanced in size (e.g. a 60/40 split). Ties break toward the
+    // middle to keep buckets balanced.
+    const mid = Math.floor(bucket.length / 2);
+    let splitAt = mid;
+    let maxGap = 1; // ignore the trivial 1-step gaps of smooth gradients
     for (let k = 1; k < bucket.length; k++) {
       const gap = bucket[k][bestCh] - bucket[k - 1][bestCh];
-      if (gap > maxGap) {
+      if (gap > maxGap || (gap === maxGap && Math.abs(k - mid) < Math.abs(splitAt - mid))) {
         maxGap = gap;
         splitAt = k;
       }

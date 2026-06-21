@@ -67,6 +67,32 @@ describe('medianCut', () => {
   it('handles empty input', () => {
     expect(medianCut([], 6)).toEqual([]);
   });
+
+  it('spreads a smooth grayscale ramp evenly instead of peeling near-black slivers', () => {
+    // 256-step grayscale ramp (0..255), one pixel per step.
+    const ramp = [];
+    for (let v = 0; v < 256; v++) ramp.push([v, v, v, 1]);
+    const pixels = pixelsFromRgba(rgbaBuffer(ramp));
+    const palette = medianCut(pixels, 6);
+    expect(palette.length).toBe(6);
+
+    // Each palette entry is gray (r==g==b); sort by gray value.
+    const grays = palette.map((c) => c[0]).sort((a, b) => a - b);
+
+    // On the old "first 1-step gap wins" split, the ramp degenerated into five
+    // near-black slivers plus one huge bucket — the top gray sat far below 255
+    // and the largest gap between consecutive palette grays was enormous.
+    let maxGap = 0;
+    for (let i = 1; i < grays.length; i++) {
+      maxGap = Math.max(maxGap, grays[i] - grays[i - 1]);
+    }
+    // With 6 colors spread across 0..255 the ideal spacing is ~42; allow slack
+    // but reject the degenerate case (one ~250 gap, five tiny ones).
+    expect(maxGap).toBeLessThan(70);
+    // The palette must actually reach toward both ends of the ramp.
+    expect(grays[0]).toBeLessThan(40);
+    expect(grays[grays.length - 1]).toBeGreaterThan(215);
+  });
 });
 
 describe('pixelsFromRgba', () => {

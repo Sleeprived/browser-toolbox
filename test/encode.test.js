@@ -46,7 +46,11 @@ describe('html entities', () => {
     expect(toHtml('<a href="x">&\'</a>')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&#39;&lt;/a&gt;');
   });
   it('decodes named, decimal and hex entities without innerHTML', () => {
-    expect(fromHtml('&lt;b&gt;&amp;&#169;&#xA9;&nbsp;')).toBe('<b>&©© ');
+    expect(fromHtml('&lt;b&gt;&amp;&#169;&#xA9;&nbsp;')).toBe('<b>&©©\u00a0');
+  });
+  it('replaces lone surrogate and NUL numeric refs with U+FFFD', () => {
+    expect(fromHtml('&#xD800;')).toBe('�');
+    expect(fromHtml('&#0;')).toBe('�');
   });
 });
 
@@ -54,5 +58,8 @@ describe('convert dispatch', () => {
   it('routes by format and mode', () => {
     expect(convert('AB', 'hex', 'encode')).toBe('4142');
     expect(convert('4142', 'hex', 'decode')).toBe('AB');
+  });
+  it('throws on unknown mode', () => {
+    expect(() => convert('AB', 'hex', 'bogus')).toThrow(EncodeError);
   });
 });

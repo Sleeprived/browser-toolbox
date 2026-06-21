@@ -27,6 +27,25 @@ function showError(msg) {
   resultBox.classList.add('hidden');
 }
 
+// Non-fatal notice: show the message but keep the result/controls visible.
+function showWarning(msg) {
+  errorBox.textContent = msg;
+  errorBox.classList.remove('hidden');
+}
+
+// Canvas allocation limits. Browsers cap a single side (~16384px on many) and
+// total area; clamp a too-large default while preserving aspect ratio.
+const MAX_CANVAS_SIDE = 16384;
+const MAX_CANVAS_PIXELS = 40 * 1000 * 1000;
+function clampToCanvasLimits(w, h) {
+  let scale = 1;
+  if (w * h > MAX_CANVAS_PIXELS) scale = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
+  if (w * scale > MAX_CANVAS_SIDE) scale = Math.min(scale, MAX_CANVAS_SIDE / w);
+  if (h * scale > MAX_CANVAS_SIDE) scale = Math.min(scale, MAX_CANVAS_SIDE / h);
+  if (scale >= 1) return { width: w, height: h };
+  return { width: Math.max(1, Math.floor(w * scale)), height: Math.max(1, Math.floor(h * scale)) };
+}
+
 function readJpegOrientation(bytes) {
   // Use the vendored piexif global if present; default to 1 (upright).
   try {
@@ -64,10 +83,16 @@ function loadFile(file) {
       const t = orientationToTransform(orientation);
       const dispW = t.swap ? img.naturalHeight : img.naturalWidth;
       const dispH = t.swap ? img.naturalWidth : img.naturalHeight;
-      widthInput.value = dispW;
-      heightInput.value = dispH;
       errorBox.classList.add('hidden');
       resultBox.classList.remove('hidden');
+      // Guard against canvas OOM: a small file can still decode to a huge bitmap.
+      // Clamp the default target so the canvas stays within sane limits.
+      const def = clampToCanvasLimits(dispW, dispH);
+      widthInput.value = def.width;
+      heightInput.value = def.height;
+      if (def.width !== dispW || def.height !== dispH) {
+        showWarning(`That image is very large (${dispW}×${dispH}). Default size clamped to ${def.width}×${def.height} to avoid running out of memory; you can adjust it.`);
+      }
       stats.textContent = `Original: ${dispW}×${dispH}, ${(file.size / 1024).toFixed(0)} KB`;
     };
     img.onerror = () => { URL.revokeObjectURL(url); showError('Could not load that image.'); };
@@ -94,6 +119,12 @@ function render() {
   canvas.width = target.width;
   canvas.height = target.height;
   const ctx = canvas.getContext('2d');
+  const outType = formatSel.value === 'keep' ? type : formatSel.value;
+  // JPEG has no alpha: composite onto white so transparent PNG/WebP don't go black.
+  if (outType === 'image/jpeg') {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
   ctx.save();
   // Apply orientation transform around the canvas center.
   ctx.translate(target.width / 2, target.height / 2);
@@ -105,7 +136,6 @@ function render() {
   ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
   ctx.restore();
 
-  const outType = formatSel.value === 'keep' ? (type === 'image/webp' ? 'image/webp' : type) : formatSel.value;
   const quality = Number(qualityRange.value);
   canvas.toBlob((blob) => {
     if (!blob) { showError('Could not encode the image in that format.'); return; }

@@ -11,7 +11,7 @@ export function escapeWifi(value) {
 export function escapeVcard(value) {
   return String(value)
     .replace(/\\/g, '\\\\')
-    .replace(/\n/g, '\\n')
+    .replace(/\r\n|\r|\n/g, '\\n')
     .replace(/,/g, '\\,')
     .replace(/;/g, '\\;');
 }
@@ -33,7 +33,7 @@ export function formatUrl(url) {
 // opts: { ssid, password, encryption: 'WPA'|'WEP'|'nopass', hidden: bool }
 export function formatWifi(opts) {
   const { ssid = '', password = '', encryption = 'WPA', hidden = false } = opts || {};
-  const auth = encryption === 'nopass' ? 'nopass' : encryption;
+  const auth = (encryption === 'WPA' || encryption === 'WEP' || encryption === 'nopass') ? encryption : 'nopass';
   let out = `WIFI:T:${auth};S:${escapeWifi(ssid)};`;
   if (auth !== 'nopass') {
     out += `P:${escapeWifi(password)};`;
@@ -62,7 +62,7 @@ export function formatVcard(opts) {
 // opts: { to, subject, body }
 export function formatEmail(opts) {
   const { to = '', subject = '', body = '' } = opts || {};
-  const addr = String(to).trim();
+  const addr = String(to).replace(/\s+/g, '');
   const params = [];
   if (subject) params.push('subject=' + encodeURIComponent(subject));
   if (body) params.push('body=' + encodeURIComponent(body));
@@ -75,7 +75,7 @@ export function formatEmail(opts) {
 // phone cameras) parse to pre-fill a text. opts: { number, message }
 export function formatSms(opts) {
   const { number = '', message = '' } = opts || {};
-  const num = String(number).replace(/[^\d+]/g, '');
+  const num = String(number).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
   const msg = String(message).replace(/[\r\n]+/g, ' ').trim();
   if (num === '' && msg === '') return '';
   if (num === '' && msg !== '') throw new Error('Enter a phone number for the SMS.');
@@ -98,7 +98,7 @@ export function formatGeo(opts) {
 // Telephone: tel: URI, keeping only a leading + and digits. opts: { number }
 export function formatTel(opts) {
   const { number = '' } = opts || {};
-  const num = String(number).replace(/[^\d+]/g, '');
+  const num = String(number).replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
   if (num === '') return '';
   return 'tel:' + num;
 }

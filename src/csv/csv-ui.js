@@ -217,10 +217,10 @@ fileInput.addEventListener('change', () => readCsvFile(fileInput.files && fileIn
 ['dragenter', 'dragover'].forEach((evt) =>
   csvIn.addEventListener(evt, (e) => { e.preventDefault(); csvIn.classList.add('drag'); }),
 );
-['dragleave', 'drop'].forEach((evt) =>
-  csvIn.addEventListener(evt, (e) => { e.preventDefault(); csvIn.classList.remove('drag'); }),
-);
+csvIn.addEventListener('dragleave', (e) => { e.preventDefault(); csvIn.classList.remove('drag'); });
 csvIn.addEventListener('drop', (e) => {
+  e.preventDefault();
+  csvIn.classList.remove('drag');
   const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
   if (f) readCsvFile(f);
 });
@@ -236,7 +236,7 @@ dlJsonBtn.addEventListener('click', () => {
 });
 
 dlCsvBtn.addEventListener('click', () => {
-  download('data.csv', serializeCsv(currentRows(), delimiter()), 'text/csv');
+  download('data.csv', serializeCsv(currentRows(), delimiter(), { sanitizeFormulas: true }), 'text/csv');
 });
 
 fromJsonBtn.addEventListener('click', () => {

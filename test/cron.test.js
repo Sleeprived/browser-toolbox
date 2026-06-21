@@ -67,6 +67,9 @@ describe('describeCron', () => {
     '0 0 13 * 5': 'At 00:00, on day 13 of the month or only on Friday.',
     '0-30 9 * * *': 'At minute 0 through 30 past 09:00, every day.',
     '0 9-17 * * *': 'At minute 0 past hours 9 through 17, every day.',
+    '*/1 * * * *': 'Every minute, every day.',
+    '0 */1 * * *': 'At minute 0, every hour, every day.',
+    '* 14 * * *': 'Every minute past 14:00, every day.',
   };
   for (const [expr, text] of Object.entries(expectations)) {
     it(`describes "${expr}"`, () => {

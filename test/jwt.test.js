@@ -43,4 +43,15 @@ describe('claims + flags', () => {
     expect(expiryStatus({ nbf: NOW / 1000 + 10 }, NOW)).toBe('not-yet-valid');
     expect(expiryStatus({ exp: NOW / 1000 + 10 }, NOW)).toBe('active');
   });
+  it('does not throw on an out-of-range time claim and returns a fallback string', () => {
+    let claims;
+    expect(() => { claims = describeClaims({ exp: 99999999999999 }, NOW); }).not.toThrow();
+    const exp = claims.find((c) => c.claim === 'exp');
+    expect(exp.iso).toMatch(/out of representable date range/);
+  });
+  it('still yields an ISO date for a normal exp', () => {
+    const claims = describeClaims({ exp: NOW / 1000 + 3600 }, NOW);
+    const exp = claims.find((c) => c.claim === 'exp');
+    expect(exp.iso).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
 });

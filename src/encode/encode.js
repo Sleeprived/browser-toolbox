@@ -65,7 +65,7 @@ export function toHtml(str) {
 }
 
 const HTML_NAMED = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0',
   copy: '©', reg: '®', trade: '™', mdash: '—', ndash: '–',
   hellip: '…', deg: '°', euro: '€', pound: '£', cent: '¢',
 };
@@ -76,6 +76,7 @@ export function fromHtml(input) {
         ? parseInt(body.slice(2), 16)
         : parseInt(body.slice(1), 10);
       if (!Number.isFinite(cp)) return m;
+      if (cp === 0 || (cp >= 0xD800 && cp <= 0xDFFF)) return '\uFFFD';
       try { return String.fromCodePoint(cp); } catch { return m; }
     }
     return Object.prototype.hasOwnProperty.call(HTML_NAMED, body) ? HTML_NAMED[body] : m;
@@ -92,5 +93,6 @@ const TABLE = {
 export function convert(text, format, mode) {
   const pair = TABLE[format];
   if (!pair) throw new EncodeError(`Unknown format: ${format}`);
+  if (mode !== 'encode' && mode !== 'decode') throw new EncodeError('Unknown mode: ' + mode);
   return (mode === 'decode' ? pair[1] : pair[0])(String(text));
 }

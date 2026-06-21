@@ -125,12 +125,24 @@ function processFile(file) {
       return;
     }
 
+    // Re-scan the cleaned output and only claim "verified clean" if nothing
+    // identifying actually survived the strip; otherwise warn the user.
+    let dirty;
+    if (mime === 'image/jpeg') {
+      const leftover = scanJpegMetadata(cleaned);
+      dirty = leftover.exif || leftover.xmp || leftover.iptc || leftover.icc ||
+        leftover.comment || leftover.other || leftover.trailing;
+    } else {
+      dirty = listStrippableChunks(cleaned).length > 0 || pngTrailingByteCount(cleaned) > 0;
+    }
+    const verdict = dirty ? '· WARNING: some metadata could not be removed' : '· verified clean (re-scanned)';
+
     const removed = bytes.length - cleaned.length;
     if (removed > 0) {
       const kb = (removed / 1024).toFixed(removed >= 1024 ? 0 : 1);
-      found.push(`Removed ${kb} KB (${bytes.length} → ${cleaned.length} bytes) · verified: no metadata containers remain`);
+      found.push(`Removed ${kb} KB (${bytes.length} → ${cleaned.length} bytes) ${verdict}`);
     } else {
-      found.push(`No size change (${bytes.length} bytes) · verified: no metadata containers remain`);
+      found.push(`No size change (${bytes.length} bytes) ${verdict}`);
     }
 
     const blob = new Blob([cleaned], { type: mime });

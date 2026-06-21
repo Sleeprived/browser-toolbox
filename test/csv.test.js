@@ -68,6 +68,18 @@ describe('serializeCsv', () => {
   it('quotes fields with newlines', () => {
     expect(serializeCsv([['x\ny']])).toBe('"x\ny"');
   });
+
+  it('does not sanitize formula-like cells by default (round-trip fidelity)', () => {
+    expect(serializeCsv([['=1+1', '+ok', '-3', '@x']])).toBe('=1+1,+ok,-3,@x');
+  });
+
+  it('prefixes formula-like cells with an apostrophe when sanitizeFormulas is set', () => {
+    expect(
+      serializeCsv([['=1+1', '+ok', '-3', '@x', '\tt', '\rr', 'safe']], ',', {
+        sanitizeFormulas: true,
+      }),
+    ).toBe("'=1+1,'+ok,'-3,'@x,'\tt,\"'\rr\",safe");
+  });
 });
 
 describe('round-trips', () => {
@@ -132,5 +144,15 @@ describe('CSV <-> JSON conversion', () => {
     const { header, objects } = rowsToObjects(rows);
     expect(header).toEqual(['a', 'b', 'column_3']);
     expect(objects[0]).toEqual({ a: '1', b: '2', column_3: '3' });
+  });
+
+  it('keeps a "__proto__" header as a real own data property', () => {
+    // Assert on the JSON string: an object literal { __proto__: ... } would set
+    // the prototype rather than create the own key, so build expected the same
+    // way the engine does (Object.create(null)) to verify the round-trip.
+    const expected = Object.create(null);
+    expected.__proto__ = 'foo';
+    expected.age = '36';
+    expect(csvToJson('__proto__,age\nfoo,36')).toBe(JSON.stringify([expected], null, 2));
   });
 });
