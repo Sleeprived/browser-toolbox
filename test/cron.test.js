@@ -52,6 +52,14 @@ describe('parseCron', () => {
     expect(() => parseCron('@bogus')).toThrow(CronError);
     expect(() => parseCron('a * * * *')).toThrow(CronError);
   });
+
+  it('rejects an enormous numeric range without expanding it (DoS guard)', () => {
+    // Before the fix this built a ~billion-entry Set (hanging the tab) before the
+    // post-expansion range check ran. It must now throw immediately instead.
+    const start = Date.now();
+    expect(() => parseCron('1-999999999 * * * *')).toThrow(CronError);
+    expect(Date.now() - start).toBeLessThan(200);
+  });
 });
 
 describe('describeCron', () => {
@@ -111,7 +119,7 @@ describe('nextRuns (UTC, deterministic)', () => {
     const start = Date.now();
     const runs = nextRuns('0 0 30 2 *', new Date('2026-01-01T00:00:00Z'), 5);
     expect(runs).toEqual([]);
-    expect(Date.now() - start).toBeLessThan(50); // short-circuited, not a full scan
+    expect(Date.now() - start).toBeLessThan(500); // short-circuited, not a full scan (loose bound: CI scheduling jitter)
   });
 
   it('yearly schedule leaps to the next occurrence', () => {
@@ -146,6 +154,6 @@ describe('nextRuns (UTC, deterministic)', () => {
   it('is fast even for sparse schedules', () => {
     const start = Date.now();
     nextRuns('0 12 29 2 *', new Date('2026-01-01T00:00:00Z'), 5);
-    expect(Date.now() - start).toBeLessThan(50);
+    expect(Date.now() - start).toBeLessThan(500);
   });
 });

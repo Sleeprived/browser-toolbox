@@ -64,6 +64,9 @@ export function readJpegDimensions(bytes) {
     const len = (bytes[i + 2] << 8) + bytes[i + 3];
     // SOF markers carry the image dimensions: C0–CF except C4/C8/CC.
     if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+      // Bound-check before reading the SOF fields so a JPEG truncated right after the
+      // marker reports a clean error instead of returning {width: NaN, height: NaN}.
+      if (i + 8 >= bytes.length) throw new JpegError('Truncated SOF marker');
       const height = (bytes[i + 5] << 8) + bytes[i + 6];
       const width = (bytes[i + 7] << 8) + bytes[i + 8];
       return { width, height };
@@ -213,7 +216,10 @@ function rebuildJpegAllowlist(bytes) {
     if (marker === 0xe0) {
       // APP0: keep a minimal 16-byte JFIF (density/units) but drop any embedded
       // thumbnail; drop JFXX (thumbnail-only) and any other APP0 entirely.
-      const isJfif = bytes[i + 2] === 0x4a && bytes[i + 3] === 0x46 &&
+      // i+13 is the highest index the rebuilt 16-byte JFIF segment reads; require it
+      // in-bounds so a truncated APP0 falls through to the drop path instead of being
+      // rebuilt with undefined-coerced (zero) version/density bytes.
+      const isJfif = i + 13 < n && bytes[i + 2] === 0x4a && bytes[i + 3] === 0x46 &&
         bytes[i + 4] === 0x49 && bytes[i + 5] === 0x46 && bytes[i + 6] === 0x00;
       if (isJfif) {
         parts.push(Uint8Array.of(

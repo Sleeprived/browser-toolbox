@@ -1,24 +1,4 @@
-// Shared page bootstrap: wires the theme toggle and registers the service worker.
-// Theme defaults to dark on every load and the toggle does NOT persist (stateless
-// by design — see spec Decisions Locked).
-
-export function initThemeToggle(doc = document) {
-  const btn = doc.querySelector('.theme-toggle');
-  if (!btn) return;
-  const apply = (light) => {
-    if (light) doc.documentElement.setAttribute('data-theme', 'light');
-    else doc.documentElement.removeAttribute('data-theme');
-    // Static accessible name; aria-pressed reflects whether light mode is ON.
-    btn.textContent = light ? 'Dark' : 'Light';
-    btn.setAttribute('aria-label', 'Toggle light theme');
-    btn.setAttribute('aria-pressed', String(light));
-  };
-  apply(false);
-  btn.addEventListener('click', () => {
-    const isLight = doc.documentElement.getAttribute('data-theme') === 'light';
-    apply(!isLight);
-  });
-}
+// Shared page bootstrap: clickjacking defense and service worker registration.
 
 // Clickjacking defense (audit-6 M4). The CSP is delivered via a <meta> tag,
 // which cannot carry frame-ancestors, and GitHub Pages cannot send X-Frame-Options,
@@ -48,6 +28,5 @@ export function registerServiceWorker() {
 // Auto-run in the browser; tests import the functions directly.
 if (typeof document !== 'undefined' && typeof window !== 'undefined') {
   preventFraming();
-  initThemeToggle();
   registerServiceWorker();
 }

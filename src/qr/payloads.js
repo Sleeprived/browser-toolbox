@@ -62,7 +62,9 @@ export function formatVcard(opts) {
 // opts: { to, subject, body }
 export function formatEmail(opts) {
   const { to = '', subject = '', body = '' } = opts || {};
-  const addr = String(to).replace(/\s+/g, '');
+  // Strip whitespace AND the mailto structural delimiters (?, #, &) from the
+  // address so a value like "a@b.com?cc=x" cannot inject or duplicate the query.
+  const addr = String(to).replace(/[\s?#&]+/g, '');
   const params = [];
   if (subject) params.push('subject=' + encodeURIComponent(subject));
   if (body) params.push('body=' + encodeURIComponent(body));

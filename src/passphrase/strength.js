@@ -44,15 +44,18 @@ function allIdentical(password) {
   return password.length >= 2 && /^(.)\1*$/.test(password);
 }
 
-function hasSequentialRun(password, minRun = 3) {
+// Length of the LONGEST monotonic ±1 run (ascending or descending): "abcd" -> 4,
+// "abXcd" -> 2. Returning the length (not a boolean) lets the caller tell an
+// incidental short run apart from a string that IS one big sequential walk.
+function longestSequentialRun(password) {
   let run = 1;
+  let max = 1;
   let dir = 0; // 0 = unknown, 1 = ascending, -1 = descending
   for (let i = 1; i < password.length; i++) {
     const diff = password.charCodeAt(i) - password.charCodeAt(i - 1);
     if ((diff === 1 || diff === -1) && (dir === 0 || dir === diff)) {
       dir = diff;
       run += 1;
-      if (run >= minRun) return true;
     } else if (diff === 1 || diff === -1) {
       dir = diff;
       run = 2; // start a fresh run in the new direction from the pair
@@ -60,8 +63,9 @@ function hasSequentialRun(password, minRun = 3) {
       dir = 0;
       run = 1;
     }
+    if (run > max) max = run;
   }
-  return false;
+  return max;
 }
 
 function repeatedUnitLength(password) {
@@ -83,23 +87,27 @@ function keyPos(ch) {
   return null;
 }
 
-// True if the password walks along a single keyboard row for >= minRun keys
-// (e.g. "qwerty", "asdf", "1234"). Catches patterns charcode-sequencing misses.
-function hasKeyboardWalk(password, minRun = 4) {
+// Number of characters that participate in a keyboard-row walk of length >= minRun
+// (e.g. "qwerty", "asdf", "1234"). Coverage is summed ACROSS row boundaries, so a
+// multi-row walk like "qwertyuiopasdfghjkl" reports its full length even though the
+// row change breaks one contiguous run. Catches patterns charcode-sequencing misses.
+function keyboardWalkCoverage(password, minRun = 4) {
   const lower = password.toLowerCase();
+  let covered = 0;
   let run = 1;
   let prev = keyPos(lower[0]);
-  for (let i = 1; i < lower.length; i++) {
-    const cur = keyPos(lower[i]);
-    if (prev && cur && prev.r === cur.r && Math.abs(prev.idx - cur.idx) === 1) {
+  for (let i = 1; i <= lower.length; i++) {
+    const cur = i < lower.length ? keyPos(lower[i]) : null;
+    const adjacent = prev && cur && prev.r === cur.r && Math.abs(prev.idx - cur.idx) === 1;
+    if (adjacent) {
       run += 1;
-      if (run >= minRun) return true;
     } else {
+      if (run >= minRun) covered += run;
       run = 1;
     }
     prev = cur;
   }
-  return false;
+  return covered;
 }
 
 // Detect a common password possibly disguised by case, substitutions, or
@@ -153,13 +161,24 @@ export function estimateStrength(password) {
     bits = Math.min(bits, lowDiversityCap);
     penalties.push('few unique characters');
   }
-  if (hasSequentialRun(password)) {
-    bits -= PENALTY_SEQUENTIAL;
+  // Sequential run: a flat penalty for an incidental run, but a hard CAP when the
+  // run dominates the whole string (e.g. "abcdefghijklmnop"), whose real guessing
+  // cost is tiny. Without the cap, length*log2(classSize) outgrew the flat penalty
+  // so long walks read "Strong" and passed the vault's master-password gate — the
+  // same failure mode already fixed for all-identical and repeated-unit passwords.
+  const seqRun = longestSequentialRun(password);
+  if (seqRun >= 3) {
     penalties.push('sequential run');
+    if (seqRun >= password.length * 0.7) bits = Math.min(bits, lowDiversityCap);
+    else bits -= PENALTY_SEQUENTIAL;
   }
-  if (hasKeyboardWalk(password)) {
-    bits -= PENALTY_KEYBOARD;
+  // Keyboard walk: same flat-vs-cap treatment, gated on how much of the string is a
+  // row-walk (counted across row boundaries, so a two-row "qwerty…asdf…" walk caps).
+  const kbCover = keyboardWalkCoverage(password);
+  if (kbCover > 0) {
     penalties.push('keyboard pattern');
+    if (kbCover >= password.length * 0.7) bits = Math.min(bits, lowDiversityCap);
+    else bits -= PENALTY_KEYBOARD;
   }
 
   // audit-7 BA7-1: a whole-string repeated unit (e.g. "Aa1!Aa1!Aa1!") has the

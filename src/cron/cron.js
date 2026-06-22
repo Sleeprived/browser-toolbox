@@ -66,6 +66,12 @@ function expandField(raw, min, max, nameList, nameBase, normalizeDow) {
       values.add(start);
     } else {
       if (end < start) throw new CronError(`Range out of order in "${part}"`);
+      // Bound-check the range BEFORE expanding it. A numeric range like
+      // "1-999999999" would otherwise run the loop below billions of times,
+      // building a giant Set and hanging the tab, before the post-expansion
+      // range check ever runs (a denial-of-service on a crafted expression).
+      if (start < min || start > max) throw new CronError(`Value ${start} out of range ${min}-${max}`);
+      if (end > max) throw new CronError(`Value ${end} out of range ${min}-${max}`);
       for (let v = start; v <= end; v += step) values.add(v);
     }
   }
@@ -120,22 +126,6 @@ export function parseCron(expr) {
     domRestricted: parts[2].trim() !== '*',
     dowRestricted: parts[4].trim() !== '*',
   };
-}
-
-function matches(cron, date) {
-  if (!cron.minute.values.has(date.getUTCMinutes())) return false;
-  if (!cron.hour.values.has(date.getUTCHours())) return false;
-  if (!cron.month.values.has(date.getUTCMonth() + 1)) return false;
-
-  const domMatch = cron.dom.values.has(date.getUTCDate());
-  const dowMatch = cron.dow.values.has(date.getUTCDay());
-
-  // Vixie cron rule: if BOTH day-of-month and day-of-week are restricted,
-  // the schedule fires when EITHER matches. Otherwise use the restricted one.
-  if (cron.domRestricted && cron.dowRestricted) return domMatch || dowMatch;
-  if (cron.domRestricted) return domMatch;
-  if (cron.dowRestricted) return dowMatch;
-  return true;
 }
 
 // Compute the next `count` run times strictly after `from` (a Date or ms),

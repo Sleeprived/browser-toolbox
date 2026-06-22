@@ -164,11 +164,10 @@ function parseFromText() {
     }
     let width = 0;
     for (const r of rows) if (r.length > width) width = r.length;
-    const header = [];
-    for (let i = 0; i < width; i++) {
-      const h = rows[0][i];
-      header.push(h === undefined || h === '' ? `column_${i + 1}` : h);
-    }
+    // Build the table header through rowsToObjects so it uses the SAME padded,
+    // de-duplicated column names as the JSON/CSV export path — otherwise a CSV with
+    // duplicate or empty header names shows different columns in the table vs JSON.
+    const { header } = rowsToObjects(rows);
     const ragged = rows.some((r) => r.length !== width);
     if (ragged) showWarn('Some rows have a different number of columns — short rows were padded and extra cells kept.');
     setData(header, rows.slice(1));

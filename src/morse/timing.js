@@ -46,7 +46,7 @@ export function buildTimeline(morse, { wpm = 20, charWpm } = {}) {
   // Words: split on '/' (any spacing) or 3+ spaces.
   const words = [];
   for (const chunk of normalized.split(/\s*\/\s*/)) {
-    for (const word of chunk.split(/ {3,}/)) {
+    for (const word of chunk.split(/\s{3,}/)) {
       const letters = word.trim().split(/\s+/).filter(Boolean);
       if (letters.length) words.push(letters);
     }

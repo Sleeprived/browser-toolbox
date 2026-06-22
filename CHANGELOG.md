@@ -1,5 +1,74 @@
 # Changelog
 
+## 2026-06-22 — v1.3.1 — dark-only + deep-audit hardening
+
+### Changed
+- **Dark-only theme.** Removed the light theme and the header light/dark toggle —
+  the app now always uses the dark palette. Dropped the light-mode CSS variables,
+  the toggle button and its bootstrap (`initThemeToggle`), and collapsed each page's
+  dual `theme-color` meta tags to a single dark value so the browser chrome no longer
+  renders light against a dark page on a light-preference OS.
+- **Cron** run times are now shown in **UTC** (matching the plain-English
+  description, which prints the raw field values) instead of the viewer's local
+  timezone — the two halves of the result no longer disagree for non-UTC users.
+- **Service worker bumped to v11** so all of the below reach already-installed users.
+
+### Fixed (security / hardening)
+- **Cron (denial of service):** a crafted expression with a huge numeric range
+  (e.g. `1-999999999`) no longer hangs the tab — the range is bounds-checked before
+  it is expanded, instead of building a billion-entry set first.
+- **Passphrase / Vault (weak-master loophole):** a long sequential walk
+  (`abcdefghijklmnop`) or a multi-row keyboard walk (`qwertyuiopasdfghjkl`) no longer
+  reads "Strong". Both are now capped to their true (tiny) guessing cost, so they read
+  "Very weak" and can no longer satisfy the vault master-password gate — extending the
+  v1.2.4/1.2.5 strength caps to the sequential and keyboard cases.
+- **CSV (formula injection):** the export-time neutralizer now also triggers when the
+  dangerous character (`= + - @`) follows leading whitespace (e.g. ` =1+1`), which
+  spreadsheets trim before evaluating — closing a bypass of the guard.
+- **Vault:** every lock path (manual button, auto-lock, visibility timeout, bfcache)
+  now clears the rendered entry rows, so the Copy-button closures that capture plaintext
+  can no longer linger in memory after a lock (previously only `pagehide` did this). The
+  manual Lock button now confirms before discarding unsaved entries, and the
+  change-master flow re-checks master-password strength at the action site
+  (defense-in-depth, mirroring create).
+- **Morse:** Play, Flash, Vibrate, and Download are now bounded, so an enormous paste
+  at low speed can no longer allocate a multi-gigabyte buffer or flood the event loop;
+  the Flash strobe rate is capped below the seizure-risk threshold (WCAG 2.3.1)
+  regardless of the chosen speed, in addition to the existing reduced-motion gate.
+
+### Fixed (correctness / robustness)
+- **EXIF:** a truncated JFIF `APP0` segment is now dropped instead of rebuilt with
+  zeroed version/density bytes; a JPEG truncated at the `SOF` marker reports a clean
+  error instead of `NaN×NaN` dimensions.
+- **CSV:** duplicate or empty header names now show the same de-duplicated columns in
+  the table as in the JSON/CSV export (they previously diverged).
+- **Encode:** URL-encoding an unpaired surrogate now surfaces a clear message instead
+  of a generic one (the underlying `URIError` is wrapped like every other codec).
+- **JWT:** an out-of-range numeric time claim no longer renders a meaningless
+  scientific-notation "relative" time.
+- **QR:** the email (`mailto:`) address now strips the URI delimiters `? # &` so a
+  malformed address cannot inject or duplicate the query string.
+- **Image:** a non-finite typed width/height (e.g. `1e999`) is clamped to a sane canvas
+  size instead of producing a `NaN×NaN` canvas.
+- **Palette:** a failed image decode no longer leaves the previous image's palette to
+  reappear when the colour-count slider is moved.
+- **TOTP:** `totp()` now rejects a negative time instead of producing a meaningless code.
+- **Morse:** multi-line / tab-separated pasted Morse is now treated with word breaks
+  (3+ of any whitespace), matching the documented behaviour; Vibrate now stops any other
+  active output channel first, like Play and Flash.
+
+### Removed
+- **Cron:** deleted an unused internal `matches()` helper (dead code — `nextRuns` uses
+  its own equivalent).
+
+### Tests
+- 306 → 316. Added regression tests for the cron range-expansion guard, the
+  sequential/keyboard strength caps, the JWT HMAC verify path (valid + wrong secret),
+  the vault keyed re-save round-trip, and announced-region/skip-link coverage for
+  `encode.html`, `jwt.html`, and `image.html`; the announced-region test now asserts the
+  `id` and `role`/`aria-live` sit on the same element. Two cron timing-bound assertions
+  were widened to remove CI flakiness.
+
 ## 2026-06-22 — v1.3.0 — Morse Code Studio
 
 ### Added

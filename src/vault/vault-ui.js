@@ -106,6 +106,12 @@ function lock() {
     if (el) el.value = '';
   }
   clearEditorFields();
+  // Also drop the rendered entry rows: their Copy buttons close over the live entry
+  // objects (plaintext username/password), so leaving the <li>s in the now-hidden
+  // DOM would keep secrets reachable in memory on EVERY lock path (manual button,
+  // auto-lock, visibility timeout, bfcache) — not just pagehide, which did this alone.
+  const list = $('entry-list');
+  if (list) list.textContent = '';
   $('entry-editor').classList.add('hidden');
   showScreen('locked');
   hide($('open-error'));
@@ -630,6 +636,15 @@ function updateChangeMasterGate() {
 
 async function applyChangeMaster() {
   const pw = $('cm-new').value;
+  // Defense-in-depth re-check (mirrors doCreate): never derive a key from a master
+  // password below the strength floor, even if the disabled-button gate is bypassed.
+  if (estimateStrength(pw).bits < MASTER_MIN_BITS || pw !== $('cm-confirm').value) {
+    const msg = $('cm-msg');
+    msg.className = 'msg error';
+    msg.textContent = 'Master password is too weak, or the two entries do not match.';
+    show(msg);
+    return;
+  }
   const btn = $('cm-apply');
   btn.disabled = true; btn.textContent = 'Changing…';
   try {
@@ -718,7 +733,13 @@ function init() {
   $('tag-filter').addEventListener('change', renderList);
   $('add-entry').addEventListener('click', () => openEditor(null));
   $('save-vault').addEventListener('click', doSave);
-  $('lock-vault').addEventListener('click', lock);
+  // Guard ONLY the manual lock on unsaved changes. Auto-lock and the visibility
+  // timeout deliberately call lock() directly — a security lock must never be
+  // blocked waiting on a confirm() the user may not answer.
+  $('lock-vault').addEventListener('click', () => {
+    if (state.dirty && !confirm('You have unsaved changes that will be lost on lock. Lock anyway?')) return;
+    lock();
+  });
 
   // Change master
   $('cm-new').addEventListener('input', updateChangeMasterGate);
@@ -776,10 +797,10 @@ function init() {
   window.addEventListener('beforeunload', (e) => {
     if (state.unlocked && state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
-  // On pagehide do a full DOM scrub (lock), not just wipeMemory, so the
-  // decrypted list, editor fields, and master inputs do not linger; also drop
-  // the rendered list so stale Copy-button closures (capturing plaintext) die.
-  window.addEventListener('pagehide', () => { const el = $('entry-list'); if (el) el.textContent = ''; lock(); });
+  // On pagehide do a full DOM scrub via lock() — which now also clears the rendered
+  // entry list (killing stale Copy-button closures that capture plaintext) — rather
+  // than just wipeMemory(), so the decrypted list, editor fields, and master inputs go.
+  window.addEventListener('pagehide', lock);
   // If the page is restored from the bfcache while logically locked, re-lock so
   // no decrypted DOM survives a back/forward restore.
   window.addEventListener('pageshow', (e) => { if (e.persisted && !state.unlocked) lock(); });

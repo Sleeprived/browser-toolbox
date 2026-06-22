@@ -53,7 +53,10 @@ export function fromHex(input) {
 }
 
 export function toUrl(str) {
-  return encodeURIComponent(String(str));
+  // encodeURIComponent throws a URIError on a lone (unpaired) surrogate; wrap it
+  // so the failure surfaces as a precise EncodeError like every other codec here.
+  try { return encodeURIComponent(String(str)); }
+  catch { throw new EncodeError('Input contains an unpaired surrogate and cannot be URL-encoded.'); }
 }
 export function fromUrl(input) {
   try { return decodeURIComponent(String(input)); } catch { throw new EncodeError('Not valid percent-encoding.'); }

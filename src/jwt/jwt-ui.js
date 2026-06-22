@@ -45,7 +45,7 @@ function render() {
     const status = expiryStatus(decoded.payload, Date.now());
     for (const c of describeClaims(decoded.payload, Date.now())) {
       const li = document.createElement('li');
-      li.textContent = `${c.label}: ${c.iso} (${c.relative})`;
+      li.textContent = c.relative ? `${c.label}: ${c.iso} (${c.relative})` : `${c.label}: ${c.iso}`;
       claimsEl.appendChild(li);
     }
     if (status !== 'active') {

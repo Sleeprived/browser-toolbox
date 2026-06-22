@@ -7,16 +7,15 @@ const descEl = document.getElementById('description');
 const runsEl = document.getElementById('next-runs');
 const tzLabel = document.getElementById('tzlabel');
 
+// All cron math is in UTC (see cron.js), and the plain-English description prints
+// the raw field values verbatim. Format the run times in UTC too so the two halves
+// of the result always show the same clock time, regardless of the viewer's zone.
 const fmt = new Intl.DateTimeFormat(undefined, {
   weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
-  hour: '2-digit', minute: '2-digit',
+  hour: '2-digit', minute: '2-digit', timeZone: 'UTC',
 });
 
-try {
-  tzLabel.textContent = `(${Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time'})`;
-} catch {
-  tzLabel.textContent = '(local time)';
-}
+tzLabel.textContent = '(UTC)';
 
 function showError(message) {
   errorBox.textContent = message;
@@ -37,7 +36,7 @@ function showResult(expr) {
   } else {
     for (const d of runs) {
       const li = document.createElement('li');
-      li.textContent = fmt.format(d); // formatted in the browser's local timezone
+      li.textContent = fmt.format(d); // formatted in UTC to match the description
       runsEl.appendChild(li);
     }
     if (runs.length > 0 && runs.length < 5) {

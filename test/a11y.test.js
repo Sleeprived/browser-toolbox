@@ -15,19 +15,26 @@ describe('accessibility: dynamic regions are announced', () => {
     ['palette.html', ['id="error"', 'role="alert"']],
     ['vault.html', ['id="unlock-error"', 'role="alert"'], ['id="save-msg"', 'aria-live="polite"']],
     ['morse.html', ['id="morse-error"', 'role="alert"'], ['id="morse-out"', 'aria-live="polite"']],
+    ['encode.html', ['id="enc-error"', 'role="alert"'], ['id="enc-out"', 'aria-live="polite"']],
+    ['jwt.html', ['id="jwt-error"', 'role="alert"'], ['id="jwt-payload"', 'aria-live="polite"']],
+    ['image.html', ['id="image-error"', 'role="alert"'], ['id="img-stats"', 'aria-live="polite"']],
   ];
+  // The id and its role/aria-live must sit on the SAME element (no '>' between them),
+  // not merely both appear somewhere in the file — otherwise the region is identified
+  // but never actually announced to a screen reader.
+  const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   for (const [file, ...pairs] of cases) {
-    it(`${file} has announced regions`, () => {
+    it(`${file} has announced regions (id + role co-located)`, () => {
       const html = read(file);
-      for (const pair of pairs) {
-        // each listed token must appear somewhere in the file
-        for (const token of pair) expect(html).toContain(token);
+      for (const [idTok, roleTok] of pairs) {
+        const re = new RegExp(`${esc(idTok)}[^>]*${esc(roleTok)}|${esc(roleTok)}[^>]*${esc(idTok)}`);
+        expect(html).toMatch(re);
       }
     });
   }
 
   it('every page has a skip link', () => {
-    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html', 'vault.html', 'morse.html']) {
+    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html', 'vault.html', 'morse.html', 'encode.html', 'jwt.html', 'image.html']) {
       expect(read(f)).toContain('class="skip-link"');
     }
   });

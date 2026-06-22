@@ -115,6 +115,7 @@ export function flash(timeline, { onToggle, onEnd } = {}) {
 // starts and ends ON and strictly alternates, which is exactly what vibrate wants.
 export function vibrate(timeline) {
   if (!vibrateSupported()) return false;
+  stopAll(); // match playAudio()/flash(): only one output channel runs at a time
   let segments = timeline.segments ?? timeline;
   // vibrate() reads the array as [buzz, pause, buzz, ...] starting with a buzz, so
   // a leading OFF would invert the rhythm. buildTimeline already starts ON; drop a

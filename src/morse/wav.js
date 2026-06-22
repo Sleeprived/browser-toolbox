@@ -16,6 +16,10 @@ export function timelineToWav(timeline, { freq = 600, sampleRate = 8000, rampMs 
   const segments = Array.isArray(timeline) ? timeline : (timeline.segments ?? []);
   const totalMs = segments.reduce((a, s) => a + s.ms, 0);
   const numSamples = Math.round((totalMs / 1000) * sampleRate);
+  // Defensive cap: never allocate an unbounded buffer for an enormous timeline
+  // (a long paste at low WPM). 30 minutes at the given rate is far beyond any real
+  // use; the Morse UI caps output well below this, so from there this never fires.
+  if (numSamples > 30 * 60 * sampleRate) throw new Error('Audio is too long to render — shorten the text or raise the speed.');
   const bytesPerSample = 2;
   const dataSize = numSamples * bytesPerSample;
 

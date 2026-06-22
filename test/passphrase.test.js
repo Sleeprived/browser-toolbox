@@ -95,11 +95,35 @@ describe('estimateStrength', () => {
     expect(long.bits).toBeLessThan(28);
   });
 
-  it('penalizes a sequential run', () => {
+  it('penalizes and caps a dominant sequential run', () => {
+    // "abcdef" is a pure ascending walk — real guessing cost is tiny, so it is
+    // CAPPED to low-diversity bits (not just flat-penalized) and reads Very weak.
     const r = estimateStrength('abcdef');
-    const base = 6 * Math.log2(26);
-    expect(r.bits).toBeCloseTo(base - PENALTY_SEQUENTIAL, 1);
     expect(r.penalties).toContain('sequential run');
+    expect(r.bits).toBeCloseTo(Math.log2(26) + Math.log2(6), 1);
+    expect(r.label).toBe('Very weak');
+  });
+
+  it('only flat-penalizes an incidental short run in an otherwise strong password', () => {
+    // A 3-char run that does NOT dominate the string must stay strong (no cap).
+    const r = estimateStrength('Mango-Tree-abc-Sunset9!');
+    expect(r.penalties).toContain('sequential run');
+    expect(['Strong', 'Very strong']).toContain(r.label);
+  });
+
+  it('caps a long sequential walk so it cannot pass the vault master gate (60 bits)', () => {
+    for (const p of ['ABCDEFGHIJKLMNOP', 'abcdefghijklmnopqrstuvwxyz', 'zyxwvutsrqponmlk', 'Abcdefghijklmno']) {
+      const r = estimateStrength(p);
+      expect(r.bits).toBeLessThan(60);
+      expect(['Strong', 'Very strong']).not.toContain(r.label);
+    }
+  });
+
+  it('caps a multi-row keyboard walk so it cannot pass the vault master gate (60 bits)', () => {
+    const r = estimateStrength('qwertyuiopasdfghjkl');
+    expect(r.penalties).toContain('keyboard pattern');
+    expect(r.bits).toBeLessThan(60);
+    expect(['Strong', 'Very strong']).not.toContain(r.label);
   });
 
   it('penalizes a common password', () => {

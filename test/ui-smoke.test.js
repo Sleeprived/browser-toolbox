@@ -19,7 +19,6 @@ function loadBody(htmlFile) {
 
 beforeEach(() => {
   vi.resetModules();
-  document.documentElement.removeAttribute('data-theme');
 });
 
 describe('cron UI', () => {
@@ -144,6 +143,34 @@ describe('jwt UI', () => {
     inEl.value = 'not a jwt';
     inEl.dispatchEvent(new window.Event('input'));
     expect(document.getElementById('jwt-error').classList.contains('hidden')).toBe(false);
+  });
+
+  it('verifies a valid HS256 signature and rejects a wrong secret', async () => {
+    loadBody('jwt.html');
+    await import('../src/jwt/jwt-ui.js');
+    // Precomputed: header {alg:HS256,typ:JWT}, payload {sub:"1",name:"x"}, HMAC-SHA256 key "my-secret".
+    const t = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwibmFtZSI6IngifQ.zbB-YHbu5RiWZZvtkO_FbwK5ICsgD4pHuCAAvdigNEM';
+    const inEl = document.getElementById('jwt-in');
+    inEl.value = t;
+    inEl.dispatchEvent(new window.Event('input'));
+
+    const verdict = document.getElementById('jwt-verdict');
+    const secret = document.getElementById('jwt-secret');
+
+    // Correct secret -> VALID. The verify handler is async and not awaited by
+    // dispatchEvent, so poll the verdict until it is populated.
+    secret.value = 'my-secret';
+    document.getElementById('jwt-verify').dispatchEvent(new window.Event('click'));
+    for (let i = 0; i < 100 && !verdict.textContent; i++) await new Promise((r) => setTimeout(r, 5));
+    expect(verdict.textContent).toMatch(/VALID/);
+    expect(verdict.textContent).not.toMatch(/INVALID/);
+
+    // Wrong secret -> INVALID.
+    verdict.textContent = '';
+    secret.value = 'wrong-secret';
+    document.getElementById('jwt-verify').dispatchEvent(new window.Event('click'));
+    for (let i = 0; i < 100 && !verdict.textContent; i++) await new Promise((r) => setTimeout(r, 5));
+    expect(verdict.textContent).toMatch(/INVALID/);
   });
 });
 

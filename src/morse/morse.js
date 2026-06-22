@@ -94,7 +94,7 @@ export function textToMorse(text) {
  * Decode Morse to uppercase text. Tolerant of input:
  *  - dit variants  · •      -> '.'
  *  - dah variants  − – — _  -> '-'
- *  - words separated by '/' (any surrounding spaces) or by 3+ spaces
+ *  - words separated by '/' (any surrounding spaces) or by 3+ whitespace chars
  *  - letters separated by any run of whitespace
  * Unknown tokens become U+FFFD so a single bad token never blanks the rest.
  * Never throws on content.
@@ -107,7 +107,7 @@ export function morseToText(morse) {
   const out = [];
   // Split on explicit '/' word breaks first, then on 3+ space word breaks.
   for (const chunk of normalized.split(/\s*\/\s*/)) {
-    for (const word of chunk.split(/ {3,}/)) {
+    for (const word of chunk.split(/\s{3,}/)) {
       const letters = word.trim().split(/\s+/).filter(Boolean);
       if (!letters.length) continue;
       out.push(letters.map((tok) => DECODE[tok] ?? REPLACEMENT).join(''));

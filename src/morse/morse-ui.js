@@ -74,14 +74,38 @@ function update() {
   }
 }
 
-function currentTimeline() {
+// Hard ceiling on rendered signal duration. A long paste at low WPM can build a
+// multi-minute (and, as a WAV, multi-gigabyte) timeline; cap it so play / flash /
+// vibrate / download all degrade with a message instead of flooding the event loop
+// with timers, scheduling millions of audio events, or OOMing the tab.
+const MAX_OUTPUT_MS = 10 * 60 * 1000;
+// Cap the FLASH strobe speed so it can never exceed ~3 Hz (the WCAG 2.3.1 seizure
+// threshold), regardless of the chosen WPM. With u = 1200/charWpm ms and a dit ON +
+// gap OFF forming a ~2u cycle, charWpm <= 7 keeps each cycle >= ~340 ms (< 3 Hz).
+const FLASH_MAX_WPM = 7;
+
+function currentTimeline(over = {}) {
   const { wpm, charWpm } = readSettings();
-  return buildTimeline(currentMorse, { wpm, charWpm });
+  return buildTimeline(currentMorse, { wpm: over.wpm ?? wpm, charWpm: over.charWpm ?? charWpm });
+}
+
+// Build the timeline for a signal channel, refusing (with a message) if it would be
+// too long to render. Returns null when the caller should not proceed.
+function outputTimeline(over) {
+  if (!currentMorse) return null;
+  const tl = currentTimeline(over);
+  if (tl.totalMs > MAX_OUTPUT_MS) {
+    errorEl.textContent = 'That is too much text to render as a signal at this speed — shorten it or raise the WPM.';
+    errorEl.classList.remove('hidden');
+    return null;
+  }
+  return tl;
 }
 
 playBtn.addEventListener('click', () => {
-  if (!currentMorse) return;
-  const ok = player.playAudio(currentTimeline(), {
+  const tl = outputTimeline();
+  if (!tl) return;
+  const ok = player.playAudio(tl, {
     freq: readSettings().freq,
     onEnd: () => setPlaying(false),
   });
@@ -95,18 +119,23 @@ stopBtn.addEventListener('click', () => {
 });
 
 downloadBtn.addEventListener('click', () => {
-  if (!currentMorse) return;
-  player.downloadWav(currentTimeline(), { freq: readSettings().freq });
+  const tl = outputTimeline();
+  if (!tl) return;
+  player.downloadWav(tl, { freq: readSettings().freq });
 });
 
 flashBtn.addEventListener('click', () => {
-  if (!currentMorse || player.isReducedMotion()) return;
-  player.flash(currentTimeline(), { onToggle: setFlasher });
+  if (player.isReducedMotion()) return;
+  const { wpm, charWpm } = readSettings();
+  const tl = outputTimeline({ wpm: Math.min(wpm, FLASH_MAX_WPM), charWpm: Math.min(charWpm, FLASH_MAX_WPM) });
+  if (!tl) return;
+  player.flash(tl, { onToggle: setFlasher });
 });
 
 vibrateBtn.addEventListener('click', () => {
-  if (!currentMorse) return;
-  player.vibrate(currentTimeline());
+  const tl = outputTimeline();
+  if (!tl) return;
+  player.vibrate(tl);
 });
 
 copyBtn.addEventListener('click', async () => {

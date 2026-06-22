@@ -1,4 +1,4 @@
-/* Browser Toolbox — shared styles. Dark-first, light via [data-theme="light"].
+/* Browser Toolbox — shared styles. Dark theme only.
    Mobile-first. System font stack only (no web fonts). */
 
 :root {
@@ -15,20 +15,6 @@
   --warn: #f0b541;
   --radius: 10px;
   --maxw: 760px;
-}
-
-:root[data-theme="light"] {
-  --bg: #f4f5f8;
-  --surface: #ffffff;
-  --surface-2: #eef0f4;
-  --border: #d3d7e0;
-  --text: #1b1d23;
-  --text-dim: #5a6072;
-  --accent: #2f6fe0;
-  --accent-press: #1f57bd;
-  --danger: #c43d3d;
-  --good: #1f9d5e;
-  --warn: #b07d12;
 }
 
 * { box-sizing: border-box; }
@@ -69,17 +55,6 @@ body {
   font-weight: 650;
   letter-spacing: 0.2px;
 }
-.site-header .spacer { flex: 1; }
-.theme-toggle {
-  background: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-.theme-toggle:hover { border-color: var(--accent); }
 
 /* Privacy banner */
 .privacy-note {

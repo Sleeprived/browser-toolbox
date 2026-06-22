@@ -38,6 +38,12 @@ function showWarning(msg) {
 const MAX_CANVAS_SIDE = 16384;
 const MAX_CANVAS_PIXELS = 40 * 1000 * 1000;
 function clampToCanvasLimits(w, h) {
+  // A typed exponential literal (e.g. "1e999") coerces to Infinity, and an
+  // over-large finite product can overflow to Infinity; either would propagate
+  // NaN through the scaling math to a NaN-sized canvas. Substitute the max side
+  // so the existing logic produces a sane, in-bounds result instead.
+  if (!Number.isFinite(w) || w <= 0) w = MAX_CANVAS_SIDE;
+  if (!Number.isFinite(h) || h <= 0) h = MAX_CANVAS_SIDE;
   let scale = 1;
   if (w * h > MAX_CANVAS_PIXELS) scale = Math.sqrt(MAX_CANVAS_PIXELS / (w * h));
   if (w * scale > MAX_CANVAS_SIDE) scale = Math.min(scale, MAX_CANVAS_SIDE / w);

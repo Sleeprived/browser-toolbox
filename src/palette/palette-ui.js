@@ -136,6 +136,9 @@ function loadFile(file) {
   }
   if (currentUrl) URL.revokeObjectURL(currentUrl);
   currentUrl = URL.createObjectURL(file);
+  // Drop the previous image's cached pixels: if THIS load fails to decode, the
+  // color-count slider must not resurrect the old palette next to a broken preview.
+  lastPixels = null;
   previewImg.src = currentUrl;
   const img = new Image();
   img.onload = () => extractFromImage(img);

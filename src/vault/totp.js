@@ -81,7 +81,7 @@ export async function hotp(keyBytes, counter, digits = 6, algorithm = 'SHA-1') {
 // digits=6, algorithm='SHA-1' }.
 export async function totp(keyBytes, opts = {}) {
   const { time, period = 30, digits = 6, algorithm = 'SHA-1' } = opts;
-  if (typeof time !== 'number' || !Number.isFinite(time)) throw new TotpError('time (Unix seconds) is required.');
+  if (typeof time !== 'number' || !Number.isFinite(time) || time < 0) throw new TotpError('time (Unix seconds) must be a non-negative number.');
   if (!Number.isInteger(period) || period < 1) throw new TotpError('period must be a positive integer.');
   const counter = Math.floor(time / period);
   return hotp(keyBytes, counter, digits, algorithm);

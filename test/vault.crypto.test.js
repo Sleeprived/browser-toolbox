@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   encryptVault,
+  encryptVaultWithKey,
   decryptVault,
   deriveKey,
   VaultCryptoError,
@@ -106,5 +107,21 @@ describe('encryptVault / decryptVault', () => {
     const c1 = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k1, data));
     const c2 = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k2, data));
     expect([...c1]).toEqual([...c2]);
+  });
+
+  it('encryptVaultWithKey round-trips and embeds the supplied salt (session re-save path)', async () => {
+    const salt = new Uint8Array(16).fill(3);
+    const key = await deriveKey('pw', salt, 1000);
+    const env = await encryptVaultWithKey(SAMPLE, key, salt, 1000);
+    // The salt the key was derived from must be embedded verbatim, or the file won't open.
+    expect(env.kdf.salt).toBe(btoa(String.fromCharCode(...salt)));
+    expect(env.kdf.iterations).toBe(1000);
+    const { vault } = await decryptVault(env, 'pw');
+    expect(vault).toEqual(SAMPLE);
+  });
+
+  it('encryptVaultWithKey requires a real CryptoKey', async () => {
+    await expect(encryptVaultWithKey(SAMPLE, {}, new Uint8Array(16).fill(3), 1000))
+      .rejects.toBeInstanceOf(VaultCryptoError);
   });
 });

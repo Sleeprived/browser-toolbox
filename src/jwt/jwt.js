@@ -49,8 +49,11 @@ export function describeClaims(payload, nowMs) {
     if (typeof v === 'number' && Number.isFinite(v)) {
       const ms = v * 1000;
       const date = new Date(ms);
-      const iso = Number.isNaN(date.getTime()) ? `epoch ${v} (out of representable date range)` : date.toISOString();
-      out.push({ claim, label, epoch: v, iso, relative: relativeTime(ms - nowMs) });
+      const valid = !Number.isNaN(date.getTime());
+      const iso = valid ? date.toISOString() : `epoch ${v} (out of representable date range)`;
+      // Suppress the relative string for an out-of-range epoch — relativeTime would
+      // otherwise emit meaningless scientific notation (e.g. "in 1.15e+25 days").
+      out.push({ claim, label, epoch: v, iso, relative: valid ? relativeTime(ms - nowMs) : '' });
     }
   }
   return out;

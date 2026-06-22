@@ -88,12 +88,15 @@ function needsQuoting(value, delimiter) {
   );
 }
 
-// Neutralize spreadsheet formula injection: a cell whose first character is
-// one of = + - @ \t \r is prefixed with a single apostrophe so spreadsheet
-// apps treat it as text. Export-only — never used on the round-trip path.
+// Neutralize spreadsheet formula injection: a cell whose first non-whitespace
+// character is one of = + - @ \t \r is prefixed with a single apostrophe so
+// spreadsheet apps treat it as text. The leading-whitespace skip is required
+// because Excel/Calc/Sheets trim leading spaces from an unquoted cell before
+// evaluating, so " =1+1" would otherwise still run as a formula. Export-only —
+// never used on the round-trip path.
 function sanitizeFormula(value) {
   const s = value == null ? '' : String(value);
-  if (/^[=+\-@\t\r]/.test(s)) return "'" + s;
+  if (/^\s*[=+\-@\t\r]/.test(s)) return "'" + s;
   return s;
 }
 
