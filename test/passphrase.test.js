@@ -8,10 +8,8 @@ import {
 import {
   estimateStrength,
   labelForBits,
-  PENALTY_IDENTICAL,
   PENALTY_SEQUENTIAL,
   PENALTY_COMMON,
-  PENALTY_REPEAT,
 } from '../src/passphrase/strength.js';
 
 const WL = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
@@ -170,6 +168,17 @@ describe('estimateStrength', () => {
     const r = estimateStrength('aaaaaaaaaaaa12'); // 12 a's + "12"; read "Strong" before the fix
     expect(['Strong', 'Very strong']).not.toContain(r.label);
     expect(r.penalties).toContain('few unique characters');
+  });
+
+  it('BA7-1: caps a repeated multi-character unit so it cannot pass the vault gate', () => {
+    // "Aa1!Aa1!Aa1!" (a 4-distinct unit repeated) read 62.8 bits "Strong" and passed
+    // the vault's 60-bit master-password gate before the audit-7 cap.
+    for (const p of ['Aa1!Aa1!Aa1!', 'aB2@aB2@aB2@', 'Qw9#Qw9#Qw9#', 'aA1!aA1!aA1!aA1!aA1!']) {
+      const r = estimateStrength(p);
+      expect(r.penalties).toContain('repeated word');
+      expect(r.bits).toBeLessThan(60);
+      expect(['Strong', 'Very strong']).not.toContain(r.label);
+    }
   });
 
   it('does NOT add a repeated-word penalty to an all-identical string', () => {

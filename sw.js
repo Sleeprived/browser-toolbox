@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v9';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -102,7 +102,7 @@ self.addEventListener('fetch', (event) => {
           .then((resp) => {
             if (resp && resp.ok && resp.type === 'basic') {
               const clone = resp.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
             }
             return resp;
           })
@@ -117,16 +117,18 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Static assets: stale-while-revalidate. Serve the cached copy immediately for
-  // speed/offline, but ALSO kick off a background fetch to refresh the cache, so
-  // modules self-heal on the next load even if CACHE_VERSION was not bumped
-  // (audit-6 M6 — prevents new HTML running against stale cached JS modules).
+  // speed/offline, and kick off a background fetch to refresh the cache so modules
+  // self-heal on a later load even if CACHE_VERSION was not bumped (audit-6 M6).
+  // Navigations are SWR too, so HTML and its module graph advance together (one load
+  // behind); a concurrent revalidation can briefly mix cache generations within a
+  // single load, which is harmless here since the modules are version-independent.
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
         .then((resp) => {
           if (resp && resp.ok && resp.type === 'basic') {
             const clone = resp.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
           }
           return resp;
         })

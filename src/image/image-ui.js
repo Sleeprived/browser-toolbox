@@ -118,7 +118,8 @@ function render() {
   // only applied to the on-load default, so a huge typed value could request an
   // over-limit canvas and silently fail toBlob.
   const clamped = clampToCanvasLimits(target.width, target.height);
-  if (clamped.width !== target.width || clamped.height !== target.height) {
+  const didClamp = clamped.width !== target.width || clamped.height !== target.height;
+  if (didClamp) {
     showWarning(`Requested size too large; clamped to ${clamped.width}×${clamped.height} to stay within canvas limits.`);
     target.width = clamped.width;
     target.height = clamped.height;
@@ -148,7 +149,8 @@ function render() {
   const quality = Number(qualityRange.value);
   canvas.toBlob((blob) => {
     if (!blob) { showError('Could not encode the image in that format.'); return; }
-    errorBox.classList.add('hidden'); // dismiss any stale clamp/large-image notice on success
+    // audit-7 BT7-2: keep THIS render's clamp notice visible; only dismiss a stale notice.
+    if (!didClamp) errorBox.classList.add('hidden');
     outBlob = blob;
     if (outUrl) URL.revokeObjectURL(outUrl);
     outUrl = URL.createObjectURL(blob);

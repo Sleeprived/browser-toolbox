@@ -98,6 +98,7 @@ function clearEditorFields() {
 function lock() {
   stopTotp();
   stopAutoLock();
+  hiddenAt = null; // audit-7 BT7-5: reset the visibility-timer state on every lock
   wipeMemory();
   // Clear sensitive master/unlock fields and the entire entry editor.
   for (const id of ['unlock-master', 'new-master', 'new-master-confirm', 'cm-new', 'cm-confirm']) {

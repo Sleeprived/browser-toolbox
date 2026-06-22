@@ -1,5 +1,24 @@
 # Changelog
 
+## 2026-06-22 — v1.2.5 — re-audit follow-up
+
+### Fixed
+- **Passphrase / Vault (security):** a password made of a short unit repeated to
+  length (e.g. `Aa1!Aa1!Aa1!`) no longer reads "Strong". The strength score is now
+  capped at the cost of guessing one unit plus its repetition, so such strings read
+  "Very weak"/"Weak" and can no longer satisfy the vault's master-password
+  requirement — closing the remaining case of the v1.2.4 weak-master fix.
+- **Image resizer:** the "clamped to fit canvas limits" notice now stays visible
+  after a successful resize, so you can see why the output size changed.
+- **Service worker:** a background cache refresh can no longer raise an unhandled
+  rejection on a storage error.
+
+### Changed
+- **Service worker bumped to v9.**
+- **Vault:** the auto-lock visibility timer state is reset on every lock (robustness).
+- Removed two now-unused internal strength penalties and corrected the service
+  worker comment to describe the actual stale-while-revalidate guarantee.
+
 ## 2026-06-21 — v1.2.4 — security & correctness fixes
 
 ### Fixed

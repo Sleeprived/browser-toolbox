@@ -9,12 +9,13 @@
 import { COMMON_PASSWORDS } from './common-passwords.js';
 
 // Penalty amounts, in bits. Documented so the meter's behavior is testable.
-export const PENALTY_IDENTICAL = 18; // all characters identical (e.g. "aaaa")
 export const PENALTY_SEQUENTIAL = 12; // an ascending/descending run of length >= 3
 export const PENALTY_COMMON = 30; // exact match against the bundled common-password list
 export const PENALTY_COMMON_AFFIX = 26; // a common word + substitutions/affixes (P@ssw0rd, password1!)
 export const PENALTY_KEYBOARD = 14; // a keyboard-adjacency walk (qwerty, asdf, 1234)
-export const PENALTY_REPEAT = 16; // a short string repeated to fill length (e.g. "abcabcabc")
+// audit-7 BT7-3: PENALTY_IDENTICAL and PENALTY_REPEAT were removed — the
+// all-identical and repeated-unit cases are now score CAPS (see estimateStrength),
+// not flat subtractions, because a flat penalty was outgrown by length.
 
 // Bit caps applied when the password is essentially a known word: real guessing
 // cost is tiny regardless of length/charset, so the charset-entropy estimate is
@@ -63,16 +64,15 @@ function hasSequentialRun(password, minRun = 3) {
   return false;
 }
 
-function hasRepeatedUnit(password) {
-  // True if the whole string is a unit repeated >= 2 times (unit length >= 2).
-  // audit-6 M2: was unit >= 3, which missed 2-char cycles ("abab...").
+function repeatedUnitLength(password) {
+  // Smallest unit length (>= 2) whose repetition equals the whole string, else 0.
+  // audit-6 M2: scan from unit length 2 so 2-char cycles ("abab...") count.
   const n = password.length;
   for (let unit = 2; unit <= n / 2; unit++) {
     if (n % unit !== 0) continue;
-    const slice = password.slice(0, unit);
-    if (slice.repeat(n / unit) === password) return true;
+    if (password.slice(0, unit).repeat(n / unit) === password) return unit;
   }
-  return false;
+  return 0;
 }
 
 function keyPos(ch) {
@@ -162,8 +162,15 @@ export function estimateStrength(password) {
     penalties.push('keyboard pattern');
   }
 
-  if (!allIdentical(password) && hasRepeatedUnit(password)) {
-    bits -= PENALTY_REPEAT;
+  // audit-7 BA7-1: a whole-string repeated unit (e.g. "Aa1!Aa1!Aa1!") has the
+  // guessing cost of ONE unit plus knowing it repeats — cap it there instead of a
+  // flat penalty that length*log2(classSize) outgrows (which let a 4+-distinct
+  // repeated unit read Strong and pass the vault master gate). Covers the cases the
+  // <=3-distinct cap above misses.
+  const unitLen = allIdentical(password) ? 0 : repeatedUnitLength(password);
+  if (unitLen > 0) {
+    const repeats = password.length / unitLen;
+    bits = Math.min(bits, unitLen * Math.log2(classSize || 1) + Math.log2(repeats));
     penalties.push('repeated word');
   }
 
