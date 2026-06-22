@@ -304,3 +304,50 @@ describe('morse UI', () => {
     expect(document.getElementById('morse-vibrate').disabled).toBe(true);
   });
 });
+
+describe('qr reader UI (non-canvas wiring)', () => {
+  // The decode pipeline needs a real canvas (hand-verified in a browser per the
+  // spec); here we only exercise the tab switching and module wiring, which is
+  // pure DOM and would break loudly if an element id were wrong.
+  it('starts on Create and switches to Read on click', async () => {
+    loadBody('qr.html');
+    await import('../src/qr/qr-read-ui.js');
+
+    const tabCreate = document.getElementById('tab-create');
+    const tabRead = document.getElementById('tab-read');
+    const panelCreate = document.getElementById('panel-create');
+    const panelRead = document.getElementById('panel-read');
+
+    expect(tabCreate.getAttribute('aria-selected')).toBe('true');
+    expect(panelRead.hidden).toBe(true);
+
+    // Non-bubbling, matching the other smoke tests: the handler is on the button
+    // itself, and bubbling to document would trip an unrelated listener leaked by
+    // an earlier suite into the shared jsdom document.
+    tabRead.dispatchEvent(new window.Event('click'));
+
+    expect(tabRead.getAttribute('aria-selected')).toBe('true');
+    expect(tabCreate.getAttribute('aria-selected')).toBe('false');
+    expect(panelRead.hidden).toBe(false);
+    expect(panelCreate.hidden).toBe(true);
+  });
+
+  it('shows an error and no results for an oversized file (no canvas needed)', async () => {
+    loadBody('qr.html');
+    await import('../src/qr/qr-read-ui.js');
+
+    const dropzone = document.getElementById('read-dropzone');
+    const big = new window.File([new Uint8Array(1)], 'huge.png', { type: 'image/png' });
+    Object.defineProperty(big, 'size', { value: 26 * 1024 * 1024 });
+
+    const dt = { files: [big] };
+    const drop = new window.Event('drop');
+    Object.defineProperty(drop, 'dataTransfer', { value: dt });
+    dropzone.dispatchEvent(drop);
+
+    const err = document.getElementById('read-error');
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(err.textContent).toMatch(/25 MB limit/);
+    expect(document.getElementById('read-results').children.length).toBe(0);
+  });
+});

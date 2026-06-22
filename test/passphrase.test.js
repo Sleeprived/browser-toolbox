@@ -105,9 +105,13 @@ describe('estimateStrength', () => {
   });
 
   it('only flat-penalizes an incidental short run in an otherwise strong password', () => {
-    // A 3-char run that does NOT dominate the string must stay strong (no cap).
-    const r = estimateStrength('Mango-Tree-abc-Sunset9!');
+    // A 3-char run ("abc") that does NOT dominate an otherwise high-entropy,
+    // non-dictionary password must stay strong (flat penalty, no cap). The string
+    // is deliberately free of dictionary words so the dictionary-composition cap
+    // (audit-8) does not apply here — this test is about sequential runs.
+    const r = estimateStrength('Kp7-Zq9-abc-Vm4!xR');
     expect(r.penalties).toContain('sequential run');
+    expect(r.penalties).not.toContain('dictionary words');
     expect(['Strong', 'Very strong']).toContain(r.label);
   });
 
@@ -214,5 +218,37 @@ describe('estimateStrength', () => {
   it('labels a non-empty low-entropy password as Very weak, not em-dash', () => {
     const r = estimateStrength('aaaaaa'); // identical → ~10 bits
     expect(r.label).toBe('Very weak');
+  });
+
+  // audit-8: the strength meter used to score multi-word / repeated
+  // dictionary-word compositions by length*log2(charset), so "password password"
+  // read 100 bits and passed the vault's 60-bit master gate. They now cap to a
+  // diceware-style word-count estimate and fail the gate.
+  it('caps multi-word and repeated dictionary-word compositions below the 60-bit master gate', () => {
+    for (const p of [
+      'password password', 'passwordmonkey', 'admin99admin', 'master99master',
+      'letmein letmein', 'baseballfootball', 'welcomemaster', 'monkey.monkey',
+    ]) {
+      const r = estimateStrength(p);
+      expect(r.penalties).toContain('dictionary words');
+      expect(r.bits).toBeLessThan(60);
+      expect(['Strong', 'Very strong']).not.toContain(r.label);
+    }
+  });
+
+  it('still passes a genuinely random 5+-word generated passphrase', () => {
+    // Mimics the vault generator output: distinct EFF words, hyphen-separated,
+    // capitalized. The dictionary cap must NOT push real generated output below 60.
+    const five = estimateStrength('Abacus-Abdomen-Trombone-Relish-Battery');
+    expect(five.bits).toBeGreaterThanOrEqual(60);
+    expect(['Strong', 'Very strong']).toContain(five.label);
+    const six = estimateStrength('Abacus-Abdomen-Trombone-Relish-Battery-Staple');
+    expect(six.bits).toBeGreaterThanOrEqual(60);
+  });
+
+  it('does not treat a single dictionary word amid non-dictionary noise as a composition', () => {
+    const r = estimateStrength('Tr0ub4d# relish9X'); // only "relish" is a dictionary word
+    expect(r.penalties).not.toContain('dictionary words');
+    expect(r.bits).toBeGreaterThan(80);
   });
 });

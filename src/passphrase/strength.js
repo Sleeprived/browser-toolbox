@@ -4,9 +4,15 @@
 //
 // This is a rough guide, deliberately NOT a full cracker (zxcvbn was out of
 // scope). It errs toward caution: a common word dressed up with substitutions or
-// a trailing digit is capped so it can never read as "strong".
+// a trailing digit is capped, and a string that is really just two or more
+// dictionary words strung together (e.g. "password password") is scored as a
+// short word-sequence rather than by length*charset, so neither can read as
+// "strong". It still cannot see every disguise — l33t of an uncommon single word
+// outside the bundled lists can still be over-rated — so it is a guard, not a
+// guarantee; for a master password the bundled generator gives true randomness.
 
 import { COMMON_PASSWORDS } from './common-passwords.js';
+import { EFF_WORDLIST } from '../../assets/data/eff_wordlist.js';
 
 // Penalty amounts, in bits. Documented so the meter's behavior is testable.
 export const PENALTY_SEQUENTIAL = 12; // an ascending/descending run of length >= 3
@@ -30,6 +36,20 @@ const SYMBOL_SPACE = 33; // printable ASCII punctuation + space
 const LEET = { '@': 'a', '4': 'a', '8': 'b', '3': 'e', '1': 'i', '0': 'o', '5': 's', $: 's', '7': 't' };
 
 const KEYBOARD_ROWS = ['`1234567890-=', 'qwertyuiop[]\\', "asdfghjkl;'", 'zxcvbnm,./'];
+
+// Word set for spotting dictionary-composition passwords: the EFF diceware list
+// (the same words the generator draws from) plus the alphabetic common-password
+// entries. Built once. A recognized word is treated as at most one diceware pick
+// (log2(7776) bits) so the generator's own 5+-word output still clears the gate,
+// while glued/repeated common words ("password password") collapse far below it.
+const DICT_WORDS = (() => {
+  const s = new Set();
+  for (const w of EFF_WORDLIST) if (w.length >= 3) s.add(w);
+  for (const w of COMMON_PASSWORDS) if (/^[a-z]{3,}$/.test(w)) s.add(w);
+  return s;
+})();
+const DICT_BITS_PER_WORD = Math.log2(7776);
+const MAX_DICT_WORD = 15; // longest substring we try to match as a word at a position
 
 function charClassSize(password) {
   let size = 0;
@@ -129,6 +149,46 @@ function commonMatch(password) {
   return null;
 }
 
+// Greedy longest-match segmentation of the lowercased password against DICT_WORDS.
+// Returns how much of the alphabetic content is real dictionary words, so the
+// caller can cap multi-word compositions (which length*log2(charset) over-rates).
+function dictionaryComposition(password) {
+  const lower = password.toLowerCase();
+  const n = lower.length;
+  const isAlpha = (c) => c >= 'a' && c <= 'z';
+  const distinct = new Set();
+  let totalWords = 0;
+  let coveredLetters = 0;
+  let totalLetters = 0;
+  let i = 0;
+  while (i < n) {
+    if (!isAlpha(lower[i])) { i++; continue; }
+    totalLetters++;
+    let matched = 0;
+    const maxLen = Math.min(MAX_DICT_WORD, n - i);
+    for (let len = maxLen; len >= 3; len--) {
+      const cand = lower.slice(i, i + len);
+      if (!/^[a-z]+$/.test(cand)) continue; // never match across a non-letter
+      if (DICT_WORDS.has(cand)) { matched = len; break; }
+    }
+    if (matched) {
+      distinct.add(lower.slice(i, i + matched));
+      totalWords++;
+      coveredLetters += matched;
+      totalLetters += matched - 1; // the first letter of the word was already counted
+      i += matched;
+    } else {
+      i++; // uncovered single letter; the next iteration counts the following one
+    }
+  }
+  return {
+    totalWords,
+    distinctWords: distinct.size,
+    uncoveredLetters: totalLetters - coveredLetters,
+    coverage: totalLetters > 0 ? coveredLetters / totalLetters : 0,
+  };
+}
+
 export function labelForBits(bits, hasInput = true) {
   if (!hasInput) return '—';
   if (bits < 28) return 'Very weak';
@@ -191,6 +251,22 @@ export function estimateStrength(password) {
     const repeats = password.length / unitLen;
     bits = Math.min(bits, unitLen * Math.log2(classSize || 1) + Math.log2(repeats));
     penalties.push('repeated word');
+  }
+
+  // A password that is really just two or more dictionary words strung together
+  // ("password password", "passwordmonkey", "admin99admin") has the guessing cost
+  // of a short word sequence, which the single-token caps above all miss. When
+  // dictionary words dominate the alphabetic content, cap at a diceware-style
+  // word-count estimate so such a password can never pass the vault's 60-bit
+  // master gate, while a genuinely random 5+-word generated passphrase still does.
+  const comp = dictionaryComposition(password);
+  if (comp.totalWords >= 2 && comp.coverage >= 0.6) {
+    const wordBits =
+      comp.distinctWords * DICT_BITS_PER_WORD + // each distinct word ~ one diceware pick
+      Math.log2(comp.totalWords) +              // ordering / repetition of the words
+      comp.uncoveredLetters * Math.log2(26);    // leftover non-dictionary letters
+    bits = Math.min(bits, wordBits);
+    penalties.push('dictionary words');
   }
 
   const common = commonMatch(password);

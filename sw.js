@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v11';
+const CACHE_VERSION = 'v13';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -34,7 +34,11 @@ const ASSETS = [
   'src/qr/matrix.js',
   'src/qr/quality.js',
   'src/qr/qr-ui.js',
+  'src/qr/decode.js',
+  'src/qr/risk.js',
+  'src/qr/qr-read-ui.js',
   'assets/vendor/qrcode-generator.js',
+  'assets/vendor/jsQR.js',
   'src/exif/jpeg.js',
   'src/exif/png.js',
   'src/exif/exif-ui.js',

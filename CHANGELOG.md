@@ -1,5 +1,53 @@
 # Changelog
 
+## 2026-06-22 — v1.4.1 — vault master-password gate + secret hygiene
+
+### Fixed (security / hardening)
+- **Password Vault / Passphrase (weak-master loophole):** the strength meter scored
+  a string made of two or more dictionary words by length × charset, so multi-word
+  and repeated-word compositions read far stronger than they are — e.g.
+  `password password` showed ~100 bits ("Very strong") and **passed the vault's
+  60-bit master-password gate**, as did `passwordmonkey`, `admin99admin`, and
+  `Summer2024Summer`. Such inputs are now segmented against the EFF wordlist + the
+  common-password list and capped at a diceware-style word-count estimate, so they
+  fail the gate. A genuinely random 5+-word generated passphrase still passes.
+  (Known limit: l33t of a single uncommon word, or a famous published phrase, can
+  still be over-rated — the meter is a guard, not a full cracker.)
+
+### Changed (vault hardening)
+- The master-password input is cleared immediately after a successful unlock instead
+  of lingering in the field for the whole unlocked session.
+- The clipboard is wiped on **lock** (cancelling the pending auto-clear timer), so a
+  copied password does not outlive the lock waiting on a timer the browser may have
+  throttled in a background tab.
+- Corrected an over-stated in-code comment: on lock the decrypted vault has its
+  references dropped and the DOM scrubbed, but a browser cannot guarantee the
+  underlying plaintext bytes are zeroed (immutable JS strings, non-deterministic GC).
+
+### Added
+- **README** gained a "Security & trust — Password Vault" section: the master
+  password is the real security boundary, the web-delivery trust model, and the
+  run-it-locally option for a stronger trust model.
+- **Service worker bumped to v13** so the above reach already-installed users.
+
+## 2026-06-22 — v1.4.0 — QR reader + local link-safety check
+
+### Added
+- **QR Code Studio now reads QR codes, not just makes them.** A new **Read & check**
+  tab lets you drop or choose an image of a QR code; it is decoded entirely in your
+  browser (no upload) and broken down by type — links, Wi-Fi, contacts, email, SMS,
+  map locations, phone numbers, and plain text.
+- **Local safety check (heuristic, not a verdict).** For the decoded content the tool
+  surfaces warning signs rather than a green "safe" badge it cannot honestly give:
+  `javascript:`/`data:`/`file:` schemes and embedded-credential (`user@host`) links are
+  flagged as danger; plain `http://`, punycode/internationalized domains, raw-IP hosts,
+  and known link shorteners as caution; with the standing reminder that a local check
+  cannot guarantee a link is safe. Links are shown as inert text — never auto-opened.
+
+### Changed
+- Bundles **jsQR 1.4.0** (Apache-2.0) as the in-browser decoder; attributed in `NOTICE`.
+- **Service worker bumped to v12** so the new tab reaches already-installed users.
+
 ## 2026-06-22 — v1.3.1 — dark-only + deep-audit hardening
 
 ### Changed

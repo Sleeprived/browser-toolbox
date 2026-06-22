@@ -21,6 +21,13 @@
   <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>QR Code Studio</h1>
+
+    <div class="tabs" role="tablist" aria-label="QR mode">
+      <button class="tab" id="tab-create" role="tab" aria-selected="true" aria-controls="panel-create" type="button">Create</button>
+      <button class="tab" id="tab-read" role="tab" aria-selected="false" aria-controls="panel-read" type="button" tabindex="-1">Read &amp; check</button>
+    </div>
+
+    <div id="panel-create" role="tabpanel" aria-labelledby="tab-create">
     <p class="lead">Create QR codes for text, links, WiFi, contacts, email, SMS, map locations, and phone numbers. Generated entirely in your browser.</p>
 
     <div class="card">
@@ -157,12 +164,35 @@
       <span aria-hidden="true">&#128274;</span>
       <span>Your QR codes are built entirely in your browser. Nothing you enter is uploaded.</span>
     </div>
+    </div><!-- /panel-create -->
+
+    <div id="panel-read" role="tabpanel" aria-labelledby="tab-read" hidden>
+      <p class="lead">Upload an image of a QR code to see what it contains and where a link really points, with a local safety check. The image is decoded in your browser and never uploaded.</p>
+
+      <div class="card">
+        <div class="dropzone" id="read-dropzone" role="button" tabindex="0" aria-label="Drop a QR-code image here or press Enter to choose a file">
+          <p><strong>Drop a QR-code image here</strong> or click to choose.</p>
+          <p class="lead">PNG, JPEG, WebP, or GIF, up to 25&nbsp;MB.</p>
+          <input type="file" id="read-file" accept="image/*" class="hidden" />
+        </div>
+      </div>
+
+      <div id="read-error" class="msg error hidden" role="alert"></div>
+      <div id="read-results" aria-live="polite"></div>
+
+      <div class="privacy-note">
+        <span aria-hidden="true">&#128274;</span>
+        <span>The image is decoded entirely on your device and never uploaded. The safety check is a local heuristic &mdash; it can flag warning signs but cannot guarantee a link is safe.</span>
+      </div>
+    </div><!-- /panel-read -->
   </main>
 
   <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
 
   <script src="assets/vendor/qrcode-generator.js"></script>
+  <script src="assets/vendor/jsQR.js"></script>
   <script type="module" src="src/shared/page.js"></script>
   <script type="module" src="src/qr/qr-ui.js"></script>
+  <script type="module" src="src/qr/qr-read-ui.js"></script>
 </body>
 </html>

@@ -1,8 +1,11 @@
 // Password Vault UI controller. Wires the lock / create / unlock / app screens to
 // the pure crypto, model, TOTP, and generator modules. All secret-bearing values
 // are rendered with textContent / createElement (never innerHTML) so a malicious
-// entry title can never inject markup. The decrypted vault and derived key live
-// only in memory and are wiped on lock, auto-lock, and page unload.
+// entry title can never inject markup. On lock, auto-lock, and page unload the
+// decrypted vault and derived key have their references dropped and the DOM is
+// scrubbed; note a browser cannot guarantee the underlying plaintext BYTES are
+// zeroed (JS strings are immutable and GC timing is not controllable), so this
+// limits — but cannot fully eliminate — in-memory exposure while the tab lives.
 
 import {
   encryptVaultWithKey,
@@ -98,6 +101,11 @@ function clearEditorFields() {
 function lock() {
   stopTotp();
   stopAutoLock();
+  // Best-effort: cancel any pending clipboard auto-clear and wipe the clipboard now,
+  // so a copied password does not outlive the lock waiting on a (possibly throttled)
+  // timer. Rejects silently if the document is not focused (e.g. background auto-lock).
+  clearTimeout(clipboardTimer);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText('').catch(() => {});
   hiddenAt = null; // audit-7 BT7-5: reset the visibility-timer state on every lock
   wipeMemory();
   // Clear sensitive master/unlock fields and the entire entry editor.
@@ -218,6 +226,9 @@ async function doUnlock() {
     state.salt = salt;
     state.iterations = iterations;
     state.pendingEnvelope = null;
+    // Drop the typed master password from the DOM input as soon as it has served its
+    // purpose, rather than leaving it in the field for the whole unlocked session.
+    $('unlock-master').value = '';
     enterApp();
   } catch (e) {
     const msg = e instanceof VaultCryptoError ? e.message : 'Could not open this vault file.';

@@ -9,3 +9,8 @@ and update both this version and the matching pin in package.json):
 - piexifjs 1.0.6 (MIT) — hMatoba
   (piexif.js self-reports `that.version = "1.0.4"` internally; that is an
   upstream labeling bug — the shipped file is the official 1.0.6 release.)
+- jsQR 1.4.0 (Apache License 2.0) — Cosmo Wolfe and contributors
+  (https://github.com/cozmo/jsQR). Used to decode uploaded QR images in the
+  browser. The distributed jsQR.js carries no inline license header and upstream
+  ships no NOTICE file, so this entry is the required attribution; the full
+  Apache-2.0 license text is at https://www.apache.org/licenses/LICENSE-2.0.

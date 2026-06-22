@@ -1,5 +1,5 @@
 node_modules/
 *.log
 .DS_Store
-# internal local design specs — keep out of the public repo
+# local design specs / working notes — keep out of the public repo
 docs/
