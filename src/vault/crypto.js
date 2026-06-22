@@ -19,6 +19,12 @@ export class VaultCryptoError extends Error {
 // be raised in a future version without breaking older files.
 export const DEFAULT_ITERATIONS = 600000;
 
+// Ceiling on the attacker-controllable iteration count from an opened vault file
+// (audit-6 M5). Without it, a crafted file could set iterations to billions
+// and freeze the tab in PBKDF2 before the password is even checked. 10M leaves
+// ample headroom to raise the work factor in future versions.
+export const MAX_ITERATIONS = 10000000;
+
 export const FORMAT = 'browser-toolbox-vault';
 export const FORMAT_VERSION = 1;
 
@@ -60,6 +66,9 @@ export async function deriveKey(masterPassword, salt, iterations = DEFAULT_ITERA
   }
   if (!Number.isInteger(iterations) || iterations < 1) {
     throw new VaultCryptoError('iterations must be a positive integer.');
+  }
+  if (iterations > MAX_ITERATIONS) {
+    throw new VaultCryptoError('iterations exceeds the maximum allowed.');
   }
   const { subtle } = getCrypto();
   const baseKey = await subtle.importKey(
@@ -119,6 +128,7 @@ function validateEnvelope(env) {
   if (kdf.name !== 'PBKDF2') throw new VaultCryptoError(`Unsupported key-derivation function: ${kdf.name}.`);
   if (typeof kdf.salt !== 'string') throw new VaultCryptoError('Vault file is missing its salt.');
   if (!Number.isInteger(kdf.iterations) || kdf.iterations < 1) throw new VaultCryptoError('Vault file has an invalid iteration count.');
+  if (kdf.iterations > MAX_ITERATIONS) throw new VaultCryptoError('Vault file iteration count is implausibly high; refusing to open.');
   if (env.cipher && env.cipher !== 'AES-GCM') throw new VaultCryptoError(`Unsupported cipher: ${env.cipher}.`);
   if (typeof iv !== 'string') throw new VaultCryptoError('Vault file is missing its IV.');
   if (typeof ciphertext !== 'string') throw new VaultCryptoError('Vault file is missing its ciphertext.');

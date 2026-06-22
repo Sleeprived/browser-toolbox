@@ -1,5 +1,45 @@
 # Changelog
 
+## 2026-06-21 — v1.2.4 — security & correctness fixes
+
+### Fixed
+- **Passphrase / Vault (security):** the strength meter no longer rates trivially
+  weak passwords as strong. A string of identical characters (`aaaaaaaaaaaaaaaaa`),
+  a two-character alternation (`abababab…`), or a near-uniform password with a tiny
+  suffix (`aaaaaaaaaaaa12`) now reads "Very weak". This same estimate gates the
+  Password Vault's master password, so those strings can no longer satisfy the
+  "genuinely strong master password" requirement.
+- **EXIF cleaner:** stripped photos that carried an Orientation tag are no longer
+  falsely labelled "WARNING: some metadata could not be removed". The cleaner
+  re-inserts an Orientation-only EXIF block (so photos aren't shown rotated); the
+  re-scan now judges by identifying *content* (GPS / camera / date), not by the mere
+  presence of an EXIF container, so ordinary phone photos correctly read "verified
+  clean".
+- **Password Vault:** opening a hostile vault file can no longer freeze the tab — the
+  PBKDF2 iteration count read from a file is now capped (≤ 10,000,000) before key
+  derivation runs, instead of being passed through unbounded.
+- **Image resizer:** a manually-typed width/height that exceeds canvas limits is now
+  re-clamped (with a notice) instead of producing a silent encode failure.
+
+### Added
+- **Clickjacking defense:** every page now busts out of a hostile `<iframe>` in
+  JavaScript (a meta-tag CSP cannot set `frame-ancestors` and GitHub Pages cannot
+  send `X-Frame-Options`), protecting the Password Vault's master-password entry and
+  decrypted secrets from UI-redress.
+
+### Changed
+- **Service worker bumped to v8**, and static assets (JS/CSS) now use
+  stale-while-revalidate so updated modules self-heal on the next load even if the
+  cache version is not bumped — preventing new HTML from running against stale
+  cached JavaScript after a deploy.
+- **Vault auto-lock** is now also enforced on tab-return: if the auto-lock interval
+  elapsed while the tab was hidden (where background timers can be throttled), the
+  vault locks on return.
+- **Vault entry IDs** no longer use `Math.random` in their (unreachable) fallback
+  path; a secure source is used when available.
+- **QR SVG export** validates the colour values as `#rrggbb` before embedding them,
+  hardening the export against a future free-text colour field.
+
 ## 2026-06-21 — v1.2.3 — fixes from browser-toolbox-audit-5.md
 
 ### Fixed

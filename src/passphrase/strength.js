@@ -64,9 +64,10 @@ function hasSequentialRun(password, minRun = 3) {
 }
 
 function hasRepeatedUnit(password) {
-  // True if the whole string is a unit repeated >= 2 times (unit length >= 3).
+  // True if the whole string is a unit repeated >= 2 times (unit length >= 2).
+  // audit-6 M2: was unit >= 3, which missed 2-char cycles ("abab...").
   const n = password.length;
-  for (let unit = 3; unit <= n / 2; unit++) {
+  for (let unit = 2; unit <= n / 2; unit++) {
     if (n % unit !== 0) continue;
     const slice = password.slice(0, unit);
     if (slice.repeat(n / unit) === password) return true;
@@ -139,9 +140,18 @@ export function estimateStrength(password) {
   let bits = password.length * Math.log2(classSize || 1);
   const penalties = [];
 
+  // audit-6 M1/m3: cap (don't flat-subtract) for all-identical or very low
+  // character diversity. A flat penalty was outgrown by length*log2(classSize), so
+  // "aaaaaaaaaaaaaaaaaa" read as Strong; the real guessing cost is tiny regardless
+  // of length. This bits value also gates the vault master password
+  // (MASTER_MIN_BITS), so the cap closes that weak-master loophole too.
+  const lowDiversityCap = Math.log2(classSize || 1) + Math.log2(password.length);
   if (allIdentical(password)) {
-    bits -= PENALTY_IDENTICAL;
+    bits = Math.min(bits, lowDiversityCap);
     penalties.push('repeated character');
+  } else if (new Set(password).size <= 3 && password.length >= 8) {
+    bits = Math.min(bits, lowDiversityCap);
+    penalties.push('few unique characters');
   }
   if (hasSequentialRun(password)) {
     bits -= PENALTY_SEQUENTIAL;

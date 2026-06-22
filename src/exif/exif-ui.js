@@ -130,7 +130,13 @@ function processFile(file) {
     let dirty;
     if (mime === 'image/jpeg') {
       const leftover = scanJpegMetadata(cleaned);
-      dirty = leftover.exif || leftover.xmp || leftover.iptc || leftover.icc ||
+      // audit-6 M3: the strip re-inserts an Orientation-ONLY EXIF block so
+      // cleaned photos aren't shown rotated. A bare "EXIF present" check
+      // (leftover.exif) therefore cried wolf on every photo that had an
+      // Orientation tag. Judge by identifying CONTENT instead (GPS/make/model/date).
+      const after = readExifSummary(cleaned);
+      const identifyingExif = !!(after.gps || after.make || after.model || after.dateTime);
+      dirty = identifyingExif || leftover.xmp || leftover.iptc || leftover.icc ||
         leftover.comment || leftover.other || leftover.trailing;
     } else {
       dirty = listStrippableChunks(cleaned).length > 0 || pngTrailingByteCount(cleaned) > 0;

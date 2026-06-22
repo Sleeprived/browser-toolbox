@@ -132,11 +132,15 @@ function matrixToSvg(matrix) {
   }
   const target = Number((document.getElementById('size') || {}).value) || 512;
   const px = Math.max(total, Math.floor(target / total) * total);
+  // audit-6 m8: the color inputs are <input type=color> (already #rrggbb),
+  // but defang the SVG-string interpolation so a future free-text color field
+  // can't break out of the fill attribute into arbitrary SVG markup.
+  const hex = (v, fallback) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback);
   return `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" ` +
     `viewBox="0 0 ${total} ${total}" shape-rendering="crispEdges">` +
-    `<rect width="${total}" height="${total}" fill="${bgInput.value}"/>` +
-    `<g fill="${fgInput.value}">${rects}</g></svg>`;
+    `<rect width="${total}" height="${total}" fill="${hex(bgInput.value, '#ffffff')}"/>` +
+    `<g fill="${hex(fgInput.value, '#000000')}">${rects}</g></svg>`;
 }
 
 function showError(msg) {

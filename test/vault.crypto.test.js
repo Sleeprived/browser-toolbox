@@ -79,6 +79,17 @@ describe('encryptVault / decryptVault', () => {
     await expect(decryptVault(bad, 'pw')).rejects.toThrow(/IV length/i);
   });
 
+  it('rejects an implausibly high iteration count (open-a-hostile-file DoS guard, audit-6 M5)', async () => {
+    const env = await encryptVault(SAMPLE, 'pw', FAST);
+    const bad = { ...env, kdf: { ...env.kdf, iterations: 2000000000 } };
+    await expect(decryptVault(bad, 'pw')).rejects.toThrow(/implausibly high/i);
+  });
+
+  it('deriveKey itself caps the iteration count', async () => {
+    const salt = new Uint8Array(16).fill(7);
+    await expect(deriveKey('pw', salt, 2000000000)).rejects.toThrow(/maximum/i);
+  });
+
   it('returns a reusable key so repeated saves need not re-derive', async () => {
     const env = await encryptVault(SAMPLE, 'pw', FAST);
     const { key } = await decryptVault(env, 'pw');

@@ -114,6 +114,15 @@ function render() {
     height: Number(heightInput.value) || undefined,
     lock: lockChk.checked,
   });
+  // audit-6 m5: re-clamp manually-typed dimensions; clampToCanvasLimits was
+  // only applied to the on-load default, so a huge typed value could request an
+  // over-limit canvas and silently fail toBlob.
+  const clamped = clampToCanvasLimits(target.width, target.height);
+  if (clamped.width !== target.width || clamped.height !== target.height) {
+    showWarning(`Requested size too large; clamped to ${clamped.width}×${clamped.height} to stay within canvas limits.`);
+    target.width = clamped.width;
+    target.height = clamped.height;
+  }
 
   const canvas = document.createElement('canvas');
   canvas.width = target.width;

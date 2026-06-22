@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -116,11 +116,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Static assets: cache-first.
+  // Static assets: stale-while-revalidate. Serve the cached copy immediately for
+  // speed/offline, but ALSO kick off a background fetch to refresh the cache, so
+  // modules self-heal on the next load even if CACHE_VERSION was not bumped
+  // (audit-6 M6 — prevents new HTML running against stale cached JS modules).
   event.respondWith(
     caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req)
+      const network = fetch(req)
         .then((resp) => {
           if (resp && resp.ok && resp.type === 'basic') {
             const clone = resp.clone();
@@ -128,7 +130,8 @@ self.addEventListener('fetch', (event) => {
           }
           return resp;
         })
-        .catch(() => Response.error());
+        .catch(() => cached || Response.error());
+      return cached || network;
     }),
   );
 });

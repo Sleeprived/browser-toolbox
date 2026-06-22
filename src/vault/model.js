@@ -17,8 +17,14 @@ const TOTP_ALGOS = ['SHA-1', 'SHA-256', 'SHA-512'];
 function newId() {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === 'function') return c.randomUUID();
-  // Fallback (should not be hit in supported browsers / Node 24).
-  return 'e-' + Math.abs(Date.now()).toString(36) + Math.floor(Math.random() * 1e9).toString(36);
+  // Fallback (should not be hit in supported browsers / Node 24). IDs are not
+  // secrets, but prefer a secure source over Math.random within the vault tree
+  // (audit-6 m2).
+  if (c && typeof c.getRandomValues === 'function') {
+    const r = c.getRandomValues(new Uint32Array(2));
+    return 'e-' + r[0].toString(36) + r[1].toString(36);
+  }
+  return 'e-' + Date.now().toString(36);
 }
 
 const asString = (v) => (typeof v === 'string' ? v : v == null ? '' : String(v));

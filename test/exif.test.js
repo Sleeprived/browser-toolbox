@@ -50,6 +50,20 @@ describe('JPEG EXIF strip', () => {
     expect(after.orientation).toBe(6);
   });
 
+  it('M3: a stripped photo with Orientation reads clean by CONTENT, though an EXIF container remains', () => {
+    // The strip re-inserts an Orientation-only EXIF block so cleaned photos are not
+    // shown rotated, so a raw container scan still reports an EXIF segment present...
+    const cleaned = jpeg.stripJpegMetadata(b64ToBytes(JPEG_WITH_EXIF_B64));
+    expect(jpeg.scanJpegMetadata(cleaned).exif).toBe(true);
+    // ...but NO identifying content survives — which is what the UI verdict checks
+    // after audit-6 M3 (so the cleaner no longer falsely warns on phone photos).
+    const after = jpeg.readExifSummary(cleaned);
+    expect(after.gps).toBeNull();
+    expect(after.make).toBeNull();
+    expect(after.model).toBeNull();
+    expect(after.dateTime).toBeNull();
+  });
+
   it('keeps the image dimensions intact after stripping', () => {
     const cleaned = jpeg.stripJpegMetadata(b64ToBytes(JPEG_WITH_EXIF_B64));
     expect(jpeg.readJpegDimensions(cleaned)).toEqual({ width: 2, height: 2 });

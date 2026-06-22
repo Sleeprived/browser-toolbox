@@ -87,11 +87,14 @@ describe('estimateStrength', () => {
     expect(r.label).toBe('Very strong');
   });
 
-  it('penalizes all-identical characters', () => {
-    const r = estimateStrength('aaaaaa');
-    const base = 6 * Math.log2(26);
-    expect(r.bits).toBeCloseTo(base - PENALTY_IDENTICAL, 1);
-    expect(r.penalties).toContain('repeated character');
+  it('penalizes all-identical characters and caps them low regardless of length', () => {
+    const short = estimateStrength('aaaaaa');
+    expect(short.penalties).toContain('repeated character');
+    expect(short.label).toBe('Very weak');
+    // audit-6 M1: a LONG identical string must NOT inflate to Strong via length.
+    const long = estimateStrength('aaaaaaaaaaaaaaaaaaaaaaaa'); // 24 'a'
+    expect(long.label).toBe('Very weak');
+    expect(long.bits).toBeLessThan(28);
   });
 
   it('penalizes a sequential run', () => {
@@ -155,6 +158,18 @@ describe('estimateStrength', () => {
     const r = estimateStrength('passwordpassword'); // "password" x2; not in common list as a whole
     expect(r.penalties).toContain('repeated word');
     expect(['Strong', 'Very strong']).not.toContain(r.label);
+  });
+
+  it('M2: flags a 2-character alternating pattern as a repeated word', () => {
+    expect(estimateStrength('ababab').penalties).toContain('repeated word');
+    const long = estimateStrength('ababababababab'); // 14 chars; read "Strong" before the fix
+    expect(['Strong', 'Very strong']).not.toContain(long.label);
+  });
+
+  it('m3: caps a mostly-identical password with a tiny suffix', () => {
+    const r = estimateStrength('aaaaaaaaaaaa12'); // 12 a's + "12"; read "Strong" before the fix
+    expect(['Strong', 'Very strong']).not.toContain(r.label);
+    expect(r.penalties).toContain('few unique characters');
   });
 
   it('does NOT add a repeated-word penalty to an all-identical string', () => {

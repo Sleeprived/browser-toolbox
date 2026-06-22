@@ -49,6 +49,7 @@ const state = {
 let totpTimer = null;
 let autoLockTimer = null;
 let clipboardTimer = null;
+let hiddenAt = null; // wall-clock time the tab was last hidden (audit-6 m6)
 let editingTotp = null; // the editing entry's stored TOTP params, to preserve non-default digits/period/algorithm
 
 // ============================================================
@@ -757,6 +758,20 @@ function init() {
   for (const ev of ['click', 'keydown', 'input', 'touchstart']) {
     document.addEventListener(ev, resetAutoLock, { passive: true });
   }
+  // audit-6 m6: background tabs throttle the setTimeout auto-lock, and a
+  // tab-switch does not fire pagehide. Track hidden time and lock on return if the
+  // auto-lock interval already elapsed while we were away (a robust backstop to
+  // the timer, without annoying early locks on a brief tab switch).
+  document.addEventListener('visibilitychange', () => {
+    if (!state.unlocked) return;
+    if (document.visibilityState === 'hidden') {
+      hiddenAt = Date.now();
+    } else if (hiddenAt != null) {
+      const mins = Math.min(120, Math.max(1, Number($('autolock-min').value) || 10));
+      if (Date.now() - hiddenAt >= mins * 60 * 1000) lock();
+      hiddenAt = null;
+    }
+  });
   window.addEventListener('beforeunload', (e) => {
     if (state.unlocked && state.dirty) { e.preventDefault(); e.returnValue = ''; }
   });
