@@ -18,8 +18,10 @@ Screen** to install it like an app.
 - **Password Vault** — a private, offline password manager. Your entries live in
   one file you keep, encrypted with AES-256-GCM and a PBKDF2-stretched master
   password. Includes offline TOTP/2FA codes, tags, custom fields, password
-  history, and a built-in generator. There is no cloud and **no password reset** —
-  you own and back up the file.
+  history, a built-in generator, reveal-in-place for saved passwords, and CSV
+  import from other managers (Chrome, Firefox, Bitwarden, LastPass, 1Password,
+  KeePass). There is no cloud and **no password reset** — you own and back up the
+  file.
 - **CSV ⇄ JSON Workbench** — view a CSV as a table, sort/rename/drop columns, and
   convert to JSON and back.
 - **Color Palette Extractor** — pull the dominant colors from an image; export as

@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-06-22 — v1.5.0 — vault: view saved passwords + import from other managers
+
+### Added
+- **Password Vault — view a saved password:** each entry row now has a **Show**
+  toggle that reveals its password inline, instead of only being able to copy it.
+  The revealed password auto-hides after 30 seconds, on lock, and when another row
+  is shown; only one is ever visible at a time. The auto-hide timer is dropped on
+  lock so a revealed secret never outlives the lock.
+- **Password Vault — import from other managers:** a new **Import** button reads a
+  CSV export from another password manager (Chrome/Edge, Firefox, Bitwarden,
+  LastPass, 1Password, KeePass). Columns are auto-detected and shown in an
+  **editable** mapping panel before anything is added, so unrecognized layouts work
+  too. Title falls back to the site hostname when the export has no name column,
+  `otpauth://` TOTP secrets are extracted, and a folder/group column maps to a tag.
+  The file is read entirely in your browser and never uploaded; a prominent warning
+  reminds you to delete the plaintext CSV afterwards.
+
 ## 2026-06-22 — v1.4.1 — vault master-password gate + secret hygiene
 
 ### Fixed (security / hardening)

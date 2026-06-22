@@ -262,6 +262,60 @@ describe('vault UI', () => {
       window.HTMLAnchorElement.prototype.click = origClick;
     }
   });
+
+  it('reveals a saved password from its row, then auto-hides it after 30s', async () => {
+    vi.useFakeTimers();
+    try {
+      loadBody('vault.html');
+      const mod = await import('../src/vault/vault-ui.js');
+      const { createEntry } = await import('../src/vault/model.js');
+      mod.state.unlocked = true;
+      mod.state.entries = [createEntry({ title: 'GitHub', username: 'me', password: 'sekret-pw' }, { id: 'e1', now: 1 })];
+      document.getElementById('vault-search').dispatchEvent(new window.Event('input')); // triggers renderList
+
+      const showBtn = [...document.querySelectorAll('#entry-list button')].find((b) => b.textContent === 'Show');
+      expect(showBtn).toBeTruthy();
+      showBtn.dispatchEvent(new window.Event('click'));
+      const pwSpan = document.querySelector('#entry-list .row-pw');
+      expect(pwSpan.textContent).toBe('sekret-pw');
+      expect(pwSpan.classList.contains('hidden')).toBe(false);
+      expect(showBtn.textContent).toBe('Hide');
+
+      vi.advanceTimersByTime(30 * 1000 + 100); // auto-hide fires
+      expect(pwSpan.textContent).toBe('');
+      expect(pwSpan.classList.contains('hidden')).toBe(true);
+      expect(showBtn.textContent).toBe('Show');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('imports entries from a chosen CSV with auto-detected column mapping', async () => {
+    loadBody('vault.html');
+    const mod = await import('../src/vault/vault-ui.js');
+    mod.state.unlocked = true;
+
+    const csv = 'name,username,password\nGitHub,me,pw1\nGitLab,you,pw2\n';
+    const file = new File([csv], 'export.csv', { type: 'text/csv' });
+    const input = document.getElementById('csv-input');
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new window.Event('change'));
+
+    // onCsvChosen is async (file.text()); poll for the panel to open.
+    for (let i = 0; i < 100 && document.getElementById('import-panel').classList.contains('hidden'); i++) {
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    expect(document.getElementById('import-panel').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('map-title').value).toBe('name');
+    expect(document.getElementById('map-password').value).toBe('password');
+    expect(document.getElementById('import-summary').textContent).toMatch(/Will import 2 of 2/);
+
+    document.getElementById('import-confirm').dispatchEvent(new window.Event('click'));
+    expect(mod.state.entries.length).toBe(2);
+    expect(mod.state.entries[0].title).toBe('GitHub');
+    expect(mod.state.entries[0].password).toBe('pw1');
+    expect(mod.state.dirty).toBe(true);
+  });
 });
 
 describe('image UI', () => {

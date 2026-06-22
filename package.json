@@ -1,6 +1,6 @@
 {
   "name": "browser-toolbox",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "description": "Eleven no-upload, fully client-side browser tools (QR, EXIF cleaner, passphrase, password vault, CSV<->JSON, palette, cron, encode/decode, JWT decoder, image resizer, Morse code) as an installable PWA.",

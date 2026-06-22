@@ -296,7 +296,13 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 .entry-item .title { font-weight: 650; }
 .entry-item .sub { color: var(--text-dim); font-size: 0.85rem; word-break: break-all; }
 .entry-item .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.entry-item .row-pw { flex-basis: 100%; word-break: break-all; padding-top: 4px; color: var(--text); }
 .tag-chip { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-size: 0.74rem; color: var(--text-dim); }
+
+.import-mapping { display: grid; gap: 8px; margin: 12px 0; }
+.import-mapping .map-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.import-mapping .map-row label { min-width: 140px; }
+.import-mapping .map-row select { flex: 1; min-width: 160px; }
 
 .totp-display { display: flex; gap: 12px; align-items: center; margin: 8px 0; }
 #totp-code { font-size: 1.25rem; letter-spacing: 2px; }

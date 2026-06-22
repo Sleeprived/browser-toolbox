@@ -26,6 +26,8 @@ import {
   parseVaultObject,
 } from './model.js';
 import { base32Decode, totp, secondsRemaining } from './totp.js';
+import { parseCsv, rowsToObjects } from '../csv/csv.js';
+import { TARGET_FIELDS, detectMapping, mapRowToFields, isRowEmpty, canImport } from './import.js';
 import { generatePassword } from './passgen.js';
 import { generatePassphrase } from '../passphrase/generate.js';
 import { EFF_WORDLIST } from '../../assets/data/eff_wordlist.js';
@@ -45,6 +47,7 @@ const state = {
   iterations: DEFAULT_ITERATIONS,
   filename: DEFAULT_FILENAME,
   pendingEnvelope: null,
+  pendingImport: null, // { header, rows } while the import panel is open (holds plaintext)
   dirty: false,
   editingId: null, // null while not editing; '' for a new entry; else an entry id
 };
@@ -54,6 +57,37 @@ let autoLockTimer = null;
 let clipboardTimer = null;
 let hiddenAt = null; // wall-clock time the tab was last hidden (audit-6 m6)
 let editingTotp = null; // the editing entry's stored TOTP params, to preserve non-default digits/period/algorithm
+
+// ----- per-row password reveal (view a saved password without copying) -----
+let revealTimer = null;   // auto-hide timer for a shown row password
+let revealedEls = null;   // { span, btn } of the currently revealed row, or null
+const REVEAL_MS = 30000;  // a revealed password auto-conceals after 30s
+
+// Conceal whatever row password is currently shown and drop its auto-hide
+// timer. Called on toggle-off, on re-render, and on lock — clearing the timer
+// matters because its closure captures the plaintext password, so leaving it
+// pending would keep a secret reachable for up to 30s after a lock.
+function concealReveal() {
+  clearTimeout(revealTimer);
+  revealTimer = null;
+  if (revealedEls) {
+    revealedEls.span.textContent = '';
+    revealedEls.span.classList.add('hidden');
+    revealedEls.btn.textContent = 'Show';
+    revealedEls.btn.setAttribute('aria-pressed', 'false');
+    revealedEls = null;
+  }
+}
+
+function revealRow(entry, span, btn) {
+  concealReveal(); // only one row revealed at a time
+  span.textContent = entry.password;
+  span.classList.remove('hidden');
+  btn.textContent = 'Hide';
+  btn.setAttribute('aria-pressed', 'true');
+  revealedEls = { span, btn };
+  revealTimer = setTimeout(concealReveal, REVEAL_MS);
+}
 
 // ============================================================
 // Screen management
@@ -71,6 +105,7 @@ function wipeMemory() {
   state.salt = null;
   state.iterations = DEFAULT_ITERATIONS;
   state.pendingEnvelope = null;
+  state.pendingImport = null;
   state.dirty = false;
   state.editingId = null;
 }
@@ -101,6 +136,7 @@ function clearEditorFields() {
 function lock() {
   stopTotp();
   stopAutoLock();
+  concealReveal(); // drop any shown row password + its timer (closure holds plaintext)
   // Best-effort: cancel any pending clipboard auto-clear and wipe the clipboard now,
   // so a copied password does not outlive the lock waiting on a (possibly throttled)
   // timer. Rejects silently if the document is not focused (e.g. background auto-lock).
@@ -121,6 +157,16 @@ function lock() {
   const list = $('entry-list');
   if (list) list.textContent = '';
   $('entry-editor').classList.add('hidden');
+  // Drop the import panel too: its mapping/preview text and the parsed CSV held in
+  // state.pendingImport (wiped above) carry imported plaintext until cleared.
+  if ($('import-panel')) {
+    $('import-panel').classList.add('hidden');
+    if ($('import-mapping')) $('import-mapping').textContent = '';
+    if ($('import-summary')) $('import-summary').textContent = '';
+    if ($('import-preview')) $('import-preview').textContent = '';
+    if ($('import-error')) $('import-error').classList.add('hidden');
+    if ($('import-confirm')) $('import-confirm').disabled = true;
+  }
   showScreen('locked');
   hide($('open-error'));
 }
@@ -354,6 +400,7 @@ function makeRowButton(label, className, onClick) {
 }
 
 function renderList() {
+  concealReveal(); // rows are about to be rebuilt; clear any shown password + its timer
   refreshTagFilter();
   const listEl = $('entry-list');
   listEl.textContent = '';
@@ -390,8 +437,20 @@ function renderList() {
     li.appendChild(info);
 
     if (entry.username) li.appendChild(makeRowButton('Copy user', 'btn secondary copy-btn', () => copyText(entry.username, 'Username copied')));
-    if (entry.password) li.appendChild(makeRowButton('Copy pass', 'btn secondary copy-btn', () => copyText(entry.password, 'Password copied')));
+    let pwSpan = null;
+    if (entry.password) {
+      li.appendChild(makeRowButton('Copy pass', 'btn secondary copy-btn', () => copyText(entry.password, 'Password copied')));
+      pwSpan = document.createElement('span');
+      pwSpan.className = 'row-pw mono hidden';
+      const showBtn = makeRowButton('Show', 'btn secondary', () => {
+        if (revealedEls && revealedEls.btn === showBtn) concealReveal();
+        else revealRow(entry, pwSpan, showBtn);
+      });
+      showBtn.setAttribute('aria-pressed', 'false');
+      li.appendChild(showBtn);
+    }
     li.appendChild(makeRowButton('Edit', 'btn', () => openEditor(entry.id)));
+    if (pwSpan) li.appendChild(pwSpan);
 
     listEl.appendChild(li);
   }
@@ -707,6 +766,144 @@ function wireReveal(btnId, inputId) {
 }
 
 // ============================================================
+// CSV import (from other password managers)
+// ============================================================
+const IMPORT_LABELS = {
+  title: 'Title', username: 'Username', password: 'Password', url: 'URL',
+  notes: 'Notes', totp: 'TOTP secret', tag: 'Tag (folder/group)',
+};
+
+function openImportPanelShell() {
+  show($('import-panel'));
+  hide($('entry-list'));
+  hide($('empty-state'));
+  hide($('no-match'));
+  hide($('entry-editor'));
+}
+
+function clearImportPanel() {
+  $('import-mapping').textContent = '';
+  $('import-summary').textContent = '';
+  $('import-preview').textContent = '';
+  hide($('import-error'));
+}
+
+function closeImportPanel() {
+  hide($('import-panel'));
+  clearImportPanel();
+  show($('entry-list'));
+  renderList();
+}
+
+function startImport() {
+  // Only from the list view: close the editor first so its fields are scrubbed.
+  if (state.editingId !== null) closeEditor();
+  $('csv-input').click();
+}
+
+async function onCsvChosen(file) {
+  let text;
+  try { text = await file.text(); } catch { showImportError('Could not read that file.'); return; }
+  let header, rows;
+  try {
+    const out = rowsToObjects(parseCsv(text));
+    header = out.header; rows = out.objects;
+  } catch {
+    showImportError('That file could not be read as CSV.'); return;
+  }
+  if (!rows || rows.length === 0) { showImportError('No rows found in that file.'); return; }
+  state.pendingImport = { header, rows };
+  buildImportMapping(header);
+}
+
+function showImportError(msg) {
+  openImportPanelShell();
+  clearImportPanel();
+  state.pendingImport = null;
+  $('import-confirm').disabled = true;
+  setError($('import-error'), msg);
+}
+
+function buildImportMapping(header) {
+  openImportPanelShell();
+  hide($('import-error'));
+  const mapping = detectMapping(header);
+  const wrap = $('import-mapping');
+  wrap.textContent = '';
+  for (const field of TARGET_FIELDS) {
+    const row = document.createElement('div');
+    row.className = 'map-row';
+    const lab = document.createElement('label');
+    lab.textContent = IMPORT_LABELS[field];
+    lab.setAttribute('for', `map-${field}`);
+    const sel = document.createElement('select');
+    sel.id = `map-${field}`;
+    const none = document.createElement('option');
+    none.value = ''; none.textContent = '(none)';
+    sel.appendChild(none);
+    for (const col of header) {
+      const o = document.createElement('option');
+      o.value = col; o.textContent = col;
+      sel.appendChild(o);
+    }
+    sel.value = mapping[field] || '';
+    sel.addEventListener('change', updateImportPreview);
+    row.append(lab, sel);
+    wrap.appendChild(row);
+  }
+  updateImportPreview();
+}
+
+function readImportMapping() {
+  const m = {};
+  for (const field of TARGET_FIELDS) {
+    const el = $(`map-${field}`);
+    m[field] = el && el.value ? el.value : null;
+  }
+  return m;
+}
+
+function importedRows() {
+  const mapping = readImportMapping();
+  const kept = state.pendingImport.rows
+    .map((r) => mapRowToFields(r, mapping))
+    .filter((f) => !isRowEmpty(f));
+  return { mapping, kept };
+}
+
+function updateImportPreview() {
+  if (!state.pendingImport) return;
+  const total = state.pendingImport.rows.length;
+  const { mapping, kept } = importedRows();
+  const skipped = total - kept.length;
+  $('import-summary').textContent =
+    `Will import ${kept.length} of ${total} rows` + (skipped ? ` (${skipped} blank rows skipped)` : '') + '.';
+  const first = kept[0];
+  $('import-preview').textContent = first
+    ? `First entry: ${first.title || '(untitled)'}${first.username ? ' / ' + first.username : ''}`
+    : '';
+  $('import-confirm').disabled = !(canImport(mapping) && kept.length > 0);
+}
+
+function doImport() {
+  if (!state.pendingImport) return;
+  const { mapping, kept } = importedRows();
+  if (!canImport(mapping) || kept.length === 0) return;
+  const added = kept.map((f) => createEntry(f));
+  state.entries = [...state.entries, ...added];
+  state.pendingImport = null;
+  markDirty(true);
+  closeImportPanel();
+  $('save-msg').textContent =
+    `Imported ${added.length} entr${added.length === 1 ? 'y' : 'ies'} — click Save to write them to your file.`;
+}
+
+function cancelImport() {
+  state.pendingImport = null;
+  closeImportPanel();
+}
+
+// ============================================================
 // Wiring (only runs in a real document)
 // ============================================================
 function init() {
@@ -743,6 +940,14 @@ function init() {
   $('vault-search').addEventListener('input', renderList);
   $('tag-filter').addEventListener('change', renderList);
   $('add-entry').addEventListener('click', () => openEditor(null));
+  $('import-entries').addEventListener('click', startImport);
+  $('csv-input').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) onCsvChosen(file);
+    e.target.value = '';
+  });
+  $('import-confirm').addEventListener('click', doImport);
+  $('import-cancel').addEventListener('click', cancelImport);
   $('save-vault').addEventListener('click', doSave);
   // Guard ONLY the manual lock on unsaved changes. Auto-lock and the visibility
   // timeout deliberately call lock() directly — a security lock must never be

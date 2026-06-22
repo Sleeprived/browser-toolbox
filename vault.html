@@ -83,9 +83,11 @@
           <input type="search" id="vault-search" placeholder="Search title or username&hellip;" aria-label="Search entries" />
           <select id="tag-filter" aria-label="Filter by tag"><option value="">All tags</option></select>
           <button class="btn" type="button" id="add-entry">Add entry</button>
+          <button class="btn secondary" type="button" id="import-entries">Import&hellip;</button>
           <button class="btn secondary" type="button" id="save-vault">Save</button>
           <button class="btn secondary" type="button" id="lock-vault">Lock</button>
         </div>
+        <input type="file" id="csv-input" accept=".csv,text/csv" class="hidden" aria-hidden="true" />
         <div class="vault-status">
           <span id="dirty-badge" class="badge hidden">Unsaved changes</span>
           <span id="save-msg" class="lead" aria-live="polite"></span>
@@ -111,6 +113,23 @@
       <div id="empty-state" class="lead hidden">No entries yet. Click &ldquo;Add entry&rdquo; to create your first one.</div>
       <div id="no-match" class="lead hidden">No entries match your search.</div>
       <ul id="entry-list" class="entry-list" aria-label="Vault entries"></ul>
+
+      <!-- Import panel -->
+      <section id="import-panel" class="card hidden" aria-labelledby="import-h">
+        <h3 id="import-h">Import passwords</h3>
+        <div class="msg error">
+          <strong>This file is a plaintext copy of your passwords.</strong>
+          After importing, delete the CSV from your computer (and empty the trash).
+        </div>
+        <p id="import-summary" class="lead" aria-live="polite"></p>
+        <p id="import-preview" class="lead"></p>
+        <div id="import-mapping" class="import-mapping"></div>
+        <div id="import-error" class="msg error hidden" role="alert"></div>
+        <div class="btn-row">
+          <button class="btn" type="button" id="import-confirm" disabled>Import</button>
+          <button class="btn secondary" type="button" id="import-cancel">Cancel</button>
+        </div>
+      </section>
 
       <!-- Inline entry editor -->
       <section id="entry-editor" class="card hidden" aria-labelledby="editor-h">

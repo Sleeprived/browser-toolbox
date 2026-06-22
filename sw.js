@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v14';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -59,6 +59,7 @@ const ASSETS = [
   'src/vault/model.js',
   'src/vault/totp.js',
   'src/vault/passgen.js',
+  'src/vault/import.js',
   'src/vault/vault-ui.js',
   'morse.html',
   'src/morse/morse.js',
