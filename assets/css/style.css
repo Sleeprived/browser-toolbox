@@ -296,3 +296,24 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 .custom-field-row .cf-value { flex: 1; min-width: 140px; }
 .cf-hide-label { display: inline-flex; align-items: center; gap: 4px; margin: 0; color: var(--text-dim); white-space: nowrap; }
 .cf-hide-label input { width: auto; }
+
+/* ---- Morse Code Studio ---- */
+/* The flasher toggles its background instantly (no transition) so it stays in
+   sync with the timeline; the control is also hard-disabled in JS under
+   reduced motion. */
+.morse-flasher {
+  width: 100%;
+  height: 64px;
+  margin-top: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+.morse-flasher.on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Belt-and-suspenders: never light up if reduced motion is requested. */
+  .morse-flasher.on { background: var(--surface-2); border-color: var(--border); }
+}

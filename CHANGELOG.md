@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-06-22 — v1.3.0 — Morse Code Studio
+
+### Added
+- **Morse Code Studio** (`morse.html`): translate text to and from International
+  Morse Code, live as you type, with an explicit direction toggle and
+  copy-to-clipboard. Decoding tolerates `.`/`-` plus common Unicode dit/dah
+  variants and accepts `/` or 3+ spaces between words; unsupported characters are
+  reported rather than silently dropped, and unknown tokens decode to `�` instead
+  of blanking the rest. Prosigns can be sent with the `<SOS>` angle-bracket notation.
+  - **Signal output**, all generated in the browser with no upload: play the code
+    as CW sidetone (adjustable speed/WPM, Farnsworth character speed, and tone
+    frequency), **download it as a `.wav`**, **flash** it on screen, or **vibrate**
+    it on supported phones. All four are driven from one shared timeline so they
+    stay identical. The flash is opt-in and is disabled automatically when the
+    system requests reduced motion (a photosensitivity safeguard); vibration is
+    disabled where the browser does not support it.
+- **Service worker bumped to v10** — precaches `morse.html` and the five
+  `src/morse` modules for offline use.
+
+### Notes
+- New pure modules are unit-tested with Vitest (text↔Morse round-trips, prosigns,
+  decode tolerance, PARIS + Farnsworth timing math, and WAV header/sample-count
+  correctness). The audio/flash/vibration drivers are browser-only and are covered
+  by an import-and-encode smoke test plus manual verification.
+
 ## 2026-06-22 — v1.2.5 — re-audit follow-up
 
 ### Fixed
@@ -107,9 +132,9 @@
 
 ### Notes
 - Tests 242 → 265 (a regression test for every logic fix; new `test/vault.lock.test.js`).
-  Full audit: `an internal audit`. Deferred pending a
-  spec decision: documenting the four unscoped tools (vault/jwt/encode/image) and the
-  palette/passphrase spec-wording in the build spec.
+  Full audit recorded internally. Deferred pending a spec decision: documenting the
+  four unscoped tools (vault/jwt/encode/image) and the palette/passphrase spec-wording
+  in the build spec.
 
 ## 2026-06-21 — v1.2.1
 

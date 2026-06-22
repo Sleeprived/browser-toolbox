@@ -250,3 +250,30 @@ describe('image UI', () => {
     expect(document.getElementById('img-quality-val').textContent).toBe('0.5');
   });
 });
+
+describe('morse UI', () => {
+  it('imports without Web Audio / vibrate / matchMedia and encodes live', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    const inEl = document.getElementById('morse-in');
+    inEl.value = 'HELLO';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('morse-out').textContent).toBe('.... . .-.. .-.. ---');
+  });
+
+  it('decodes Morse back to text when direction is flipped', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    document.getElementById('morse-dir').value = 'decode';
+    const inEl = document.getElementById('morse-in');
+    inEl.value = '.... ..';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('morse-out').textContent).toBe('HI');
+  });
+
+  it('disables vibrate when navigator.vibrate is unavailable (jsdom)', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    expect(document.getElementById('morse-vibrate').disabled).toBe(true);
+  });
+});

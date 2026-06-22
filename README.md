@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Ten handy tools that run entirely in your web browser — no upload, no account,
+Eleven handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -30,6 +30,9 @@ Screen** to install it like an app.
   signature verification.
 - **Image Resizer** — resize and compress JPEG, PNG, and WebP images, with
   automatic photo-rotation correction.
+- **Morse Code Studio** — translate text to and from International Morse Code,
+  then play it as audio, download it as a WAV, flash it on screen, or vibrate it
+  on supported phones. Adjustable speed (with Farnsworth) and tone.
 
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no
