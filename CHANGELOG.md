@@ -1,5 +1,35 @@
 # Changelog
 
+## 2026-06-23 — v1.7.0 — TOTP/2FA generator, hash & checksum verifier, security hardening
+
+### Added
+- **TOTP / 2FA Generator (new tool):** generate time-based one-time codes from a
+  base32 secret or an `otpauth://` URI, with a live countdown and a copy button.
+  Reuses the vault's RFC 6238 engine; the secret lives only in the tab and is
+  never stored.
+- **Hash & Checksum Verifier (new tool):** SHA-1/256/384/512 of text or a dropped
+  file via Web Crypto, with a compare field that verifies a download against its
+  published checksum (case/separator-insensitive). MD5 is intentionally omitted —
+  browsers don't provide it and it's unfit for integrity.
+
+### Fixed / hardened
+- **Passphrase / Vault (security):** a common word hidden behind letter or interior
+  padding (e.g. `qqqpasswordqqq`) no longer reads "Strong"; it is capped so it
+  cannot clear the vault's 60-bit master-password gate.
+- **Image Resizer:** rely on the browser's built-in EXIF auto-orientation instead
+  of re-applying it — rotated phone photos were being rotated twice on modern
+  browsers. Dropped the now-unused metadata-reader dependency on this page.
+- **Color Palette / QR reader / Image Resizer:** reject decompression-bomb images
+  by decoded pixel count (a small file can decode to a multi-gigabyte bitmap).
+- **JWT Decoder:** the verify result now names the algorithm and notes it checks
+  the signature only; editing the secret clears a stale verdict.
+- **Vault:** lowered the PBKDF2 iteration ceiling read from a file (bounds a
+  hostile-file tab freeze); imported TOTP digits/period are clamped to valid ranges.
+
+### Changed
+- Service worker bumped to v16 so the new tools and fixes reach installed users.
+- Tests 422 → 441.
+
 ## 2026-06-23 — v1.6.0 — Cipher Studio + Binary in the Encode Multitool
 
 ### Added

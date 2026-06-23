@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Twelve handy tools that run entirely in your web browser — no upload, no account,
+Fourteen handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -41,6 +41,11 @@ Screen** to install it like an app.
   POW knock code), **Baconian**, **Pigpen**, and **Semaphore**. The visual codes
   render as glyph/flag diagrams (downloadable as SVG or PNG) and decode by
   clicking a glyph palette.
+- **TOTP / 2FA Generator** — generate time-based one-time codes from a base32
+  secret or an `otpauth://` URI, with a live countdown. Nothing is stored; for
+  long-term storage use the Password Vault.
+- **Hash & Checksum Verifier** — compute SHA-1/256/384/512 of text or a file (via
+  the browser's Web Crypto) and verify a download against its published checksum.
 
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no

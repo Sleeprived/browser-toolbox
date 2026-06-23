@@ -1,7 +1,7 @@
 {
   "name": "Browser Toolbox",
   "short_name": "Toolbox",
-  "description": "Twelve private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, a local encrypted password vault, CSV/JSON, color palettes, cron, encode/decode, JWT decoder, image resizer, Morse code, and a cipher studio (Tap Code, Baconian, Pigpen, Semaphore).",
+  "description": "Fourteen private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, a local encrypted password vault, CSV/JSON, color palettes, cron, encode/decode, JWT decoder, image resizer, Morse code, a cipher studio (Tap Code, Baconian, Pigpen, Semaphore), a TOTP/2FA code generator, and a hash & checksum verifier.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

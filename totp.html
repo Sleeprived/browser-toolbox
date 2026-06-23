@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>TOTP / 2FA Code Generator — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>TOTP / 2FA Code Generator</h1>
+    <p class="lead">Generate a time-based one-time code from a 2FA secret or an <code>otpauth://</code> URI — entirely in your browser.</p>
+
+    <div class="card">
+      <label for="totp-in">Secret or otpauth:// URI</label>
+      <textarea id="totp-in" class="mono" placeholder="JBSWY3DPEHPK3PXP   or   otpauth://totp/Example?secret=JBSWY3DPEHPK3PXP&amp;issuer=Example"></textarea>
+    </div>
+
+    <div id="totp-error" class="msg error hidden" role="alert"></div>
+
+    <div id="totp-result" class="card hidden">
+      <p class="mono big-code" id="totp-code" aria-live="polite"></p>
+      <p class="lead">Refreshes in <span id="totp-count" aria-live="polite"></span></p>
+      <p class="lead" id="totp-meta"></p>
+      <div class="btn-row">
+        <button class="btn" type="button" id="totp-copy">Copy code</button>
+      </div>
+      <p id="totp-copied" class="lead hidden" aria-live="polite"></p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Codes are computed in your browser from a secret you already have. The secret is never stored or uploaded — close the tab and it's gone. For long-term storage, use the Password Vault.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/totp/totp-ui.js"></script>
+</body>
+</html>

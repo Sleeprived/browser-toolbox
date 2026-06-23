@@ -171,6 +171,9 @@ pre.out {
   word-break: break-word;
 }
 
+/* Large, prominent code readout (e.g. the live TOTP code) */
+.big-code { font-size: 2rem; letter-spacing: 0.08em; margin: 6px 0; }
+
 /* Tables */
 .table-scroll { overflow-x: auto; }
 table.data { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
