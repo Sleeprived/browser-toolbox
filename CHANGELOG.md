@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-06-23 — v1.6.0 — Cipher Studio + Binary in the Encode Multitool
+
+### Added
+- **Cipher Studio (new tool):** a single page that encodes and decodes four
+  classic codes behind one selector, live and offline:
+  - **Tap Code** — the POW knock code on a 5×5 grid (K is sent as C; because the
+    two share a cell, a decoded `C` can't be told back from `K`).
+  - **Baconian** — the distinct 26-letter A/B variant, so encode→decode is
+    lossless (it differs from the classic 24-letter table, where I/J and U/V
+    share a code, for letters K–Z).
+  - **Pigpen** — the Freemason geometric cipher, rendered as glyphs.
+  - **Semaphore** — flag-position figures, two arms at 45° steps.
+  The visual codes (Pigpen, Semaphore) render an on-screen glyph/flag strip with a
+  reference chart, download as **SVG or PNG**, and **decode by clicking a glyph
+  palette** to rebuild text. Malformed decode input degrades to `�` per token
+  rather than failing. Everything runs in your browser; nothing is uploaded.
+- **Encode / Decode Multitool — Binary:** a new **Binary** format converts text to
+  and from space-separated 8-bit groups (UTF-8), alongside Base64, Hex, URL, and
+  HTML entities.
+
+### Changed
+- **Service worker bumped to v15** so installed users receive the new tool, and the
+  home page, manifest, and descriptions now list twelve tools.
+
 ## 2026-06-22 — v1.5.0 — vault: view saved passwords + import from other managers
 
 ### Added

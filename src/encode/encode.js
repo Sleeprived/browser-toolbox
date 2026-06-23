@@ -86,12 +86,32 @@ export function fromHtml(input) {
   });
 }
 
+// Binary: UTF-8 bytes as space-separated 8-bit groups. Decode is tolerant of any
+// whitespace grouping but requires a whole number of bytes.
+export function toBinary(str) {
+  const bytes = te.encode(String(str));
+  const out = [];
+  for (let i = 0; i < bytes.length; i++) out.push(bytes[i].toString(2).padStart(8, '0'));
+  return out.join(' ');
+}
+
+export function fromBinary(input) {
+  const s = String(input).replace(/\s+/g, '');
+  if (s === '') return '';
+  if (!/^[01]+$/.test(s)) throw new EncodeError('Binary must contain only 0 and 1.');
+  if (s.length % 8 !== 0) throw new EncodeError('Binary length must be a multiple of 8 bits.');
+  const bytes = new Uint8Array(s.length / 8);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(s.substr(i * 8, 8), 2);
+  try { return td.decode(bytes); } catch { throw new EncodeError('Decoded bytes are not valid UTF-8 text.'); }
+}
+
 const TABLE = {
   base64: [(s) => toBase64(s), (s) => fromBase64(s)],
   base64url: [(s) => toBase64(s, { urlSafe: true }), (s) => fromBase64(s, { urlSafe: true })],
   hex: [toHex, fromHex],
   url: [toUrl, fromUrl],
   html: [toHtml, fromHtml],
+  binary: [toBinary, fromBinary],
 };
 export function convert(text, format, mode) {
   const pair = TABLE[format];

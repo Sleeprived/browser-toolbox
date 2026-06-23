@@ -335,3 +335,32 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
   /* Belt-and-suspenders: never light up if reduced motion is requested. */
   .morse-flasher.on { background: var(--surface-2); border-color: var(--border); }
 }
+
+/* ---- Cipher Studio ---- */
+/* Glyphs draw in the page text color via stroke="currentColor"; the export SVG
+   uses hardcoded colors instead so a downloaded image is visible anywhere. */
+svg.glyph { width: 44px; height: 44px; display: block; color: var(--text); }
+.glyph-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 56px;
+  margin-top: 6px;
+}
+.glyph-strip .word-gap { width: 22px; }
+.glyph-chart {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.glyph-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.glyph-cell .glyph-label { font-family: ui-monospace, monospace; font-size: 0.82rem; color: var(--text); }
+#cipher-palette { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+#cipher-palette .glyph-btn { padding: 4px; line-height: 0; }
+#cipher-palette .glyph-btn svg.glyph { width: 40px; height: 40px; }
+.glyph-chart svg.glyph { width: 40px; height: 40px; }
+#cipher-palette button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

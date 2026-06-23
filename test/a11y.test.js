@@ -18,6 +18,7 @@ describe('accessibility: dynamic regions are announced', () => {
     ['encode.html', ['id="enc-error"', 'role="alert"'], ['id="enc-out"', 'aria-live="polite"']],
     ['jwt.html', ['id="jwt-error"', 'role="alert"'], ['id="jwt-payload"', 'aria-live="polite"']],
     ['image.html', ['id="image-error"', 'role="alert"'], ['id="img-stats"', 'aria-live="polite"']],
+    ['cipher.html', ['id="cipher-error"', 'role="alert"'], ['id="cipher-out"', 'aria-live="polite"'], ['id="cipher-skipped"', 'aria-live="polite"'], ['id="cipher-status"', 'aria-live="polite"']],
   ];
   // The id and its role/aria-live must sit on the SAME element (no '>' between them),
   // not merely both appear somewhere in the file — otherwise the region is identified
@@ -34,7 +35,7 @@ describe('accessibility: dynamic regions are announced', () => {
   }
 
   it('every page has a skip link', () => {
-    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html', 'vault.html', 'morse.html', 'encode.html', 'jwt.html', 'image.html']) {
+    for (const f of ['index.html', 'qr.html', 'exif.html', 'passphrase.html', 'csv.html', 'palette.html', 'cron.html', 'vault.html', 'morse.html', 'encode.html', 'jwt.html', 'image.html', 'cipher.html']) {
       expect(read(f)).toContain('class="skip-link"');
     }
   });

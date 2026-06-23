@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Cipher Studio — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Cipher Studio</h1>
+    <p class="lead">Encode and decode classic secret codes — Tap Code, Baconian, Pigpen, and Semaphore — live and entirely in your browser.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="cipher-format">Cipher</label>
+          <select id="cipher-format">
+            <option value="tapcode">Tap Code</option>
+            <option value="baconian">Baconian</option>
+            <option value="pigpen">Pigpen</option>
+            <option value="semaphore">Semaphore</option>
+          </select>
+        </div>
+        <div>
+          <label for="cipher-dir">Direction</label>
+          <select id="cipher-dir">
+            <option value="encode">Encode</option>
+            <option value="decode">Decode</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="cipher-input-text">
+        <label for="cipher-in">Input</label>
+        <textarea id="cipher-in" class="mono" placeholder="Type text to encode — or paste code to decode"></textarea>
+      </div>
+
+      <div id="cipher-input-palette" class="hidden">
+        <p class="lead" id="cipher-help">Decode by eye — the glyph palette replaces the text box here. Click each glyph to spell your message; Insert space, Delete last, and Clear all are above the glyphs.</p>
+        <div id="cipher-palette" role="group" aria-label="Decode palette — click glyphs to build text"></div>
+      </div>
+
+      <p id="cipher-skipped" class="lead hidden" aria-live="polite"></p>
+    </div>
+
+    <div id="cipher-error" class="msg error hidden" role="alert"></div>
+    <p id="cipher-status" class="lead hidden" role="status" aria-live="polite"></p>
+
+    <div class="card">
+      <h2 class="visually-hidden-h" id="cipher-out-h">Output</h2>
+      <pre class="out" id="cipher-out" aria-live="polite"></pre>
+
+      <h2 class="visually-hidden-h hidden" id="cipher-visual-h">Encoded message</h2>
+      <div id="cipher-visual" class="glyph-strip hidden"></div>
+
+      <h2 class="visually-hidden-h hidden" id="cipher-chart-h">Reference chart — all 26 glyphs</h2>
+      <div id="cipher-chart" class="glyph-chart hidden"></div>
+
+      <div class="btn-row">
+        <button class="btn" type="button" id="cipher-copy">Copy output</button>
+        <button class="btn secondary hidden" type="button" id="cipher-download-svg">Download SVG</button>
+        <button class="btn secondary hidden" type="button" id="cipher-download-png">Download PNG</button>
+      </div>
+      <p id="cipher-copied" class="lead hidden" aria-live="polite"></p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>All encoding and decoding happen in your browser. Nothing you enter is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/cipher/cipher-ui.js"></script>
+</body>
+</html>

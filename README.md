@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Eleven handy tools that run entirely in your web browser — no upload, no account,
+Twelve handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -29,7 +29,7 @@ Screen** to install it like an app.
 - **Cron Explainer** — translate a cron schedule into plain English and preview
   its next run times.
 - **Encode / Decode Multitool** — convert text to and from Base64, Hex, URL
-  encoding, and HTML entities.
+  encoding, HTML entities, and Binary.
 - **JWT Decoder** — decode and inspect JSON Web Tokens, with optional HS256/384/512
   signature verification.
 - **Image Resizer** — resize and compress JPEG, PNG, and WebP images, with
@@ -37,6 +37,10 @@ Screen** to install it like an app.
 - **Morse Code Studio** — translate text to and from International Morse Code,
   then play it as audio, download it as a WAV, flash it on screen, or vibrate it
   on supported phones. Adjustable speed (with Farnsworth) and tone.
+- **Cipher Studio** — encode and decode classic secret codes: **Tap Code** (the
+  POW knock code), **Baconian**, **Pigpen**, and **Semaphore**. The visual codes
+  render as glyph/flag diagrams (downloadable as SVG or PNG) and decode by
+  clicking a glyph palette.
 
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no

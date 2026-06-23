@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   toBase64, fromBase64, toHex, fromHex, toUrl, fromUrl, toHtml, fromHtml,
-  convert, EncodeError,
+  toBinary, fromBinary, convert, EncodeError,
 } from '../src/encode/encode.js';
 
 describe('base64', () => {
@@ -51,6 +51,29 @@ describe('html entities', () => {
   it('replaces lone surrogate and NUL numeric refs with U+FFFD', () => {
     expect(fromHtml('&#xD800;')).toBe('�');
     expect(fromHtml('&#0;')).toBe('�');
+  });
+});
+
+describe('binary', () => {
+  it('encodes bytes as space-separated 8-bit groups', () => {
+    expect(toBinary('A')).toBe('01000001');
+    expect(toBinary('Hi')).toBe('01001000 01101001');
+  });
+  it('round-trips UTF-8 text and tolerates whitespace on decode', () => {
+    expect(fromBinary(toBinary('héllo 😀'))).toBe('héllo 😀');
+    expect(fromBinary('01001000\n01101001')).toBe('Hi');
+    expect(fromBinary('0100000100100000')).toBe('A '); // 2-byte boundary
+  });
+  it('rejects non-binary characters and non-multiple-of-8 lengths', () => {
+    expect(() => fromBinary('0102')).toThrow('Binary must contain only 0 and 1.');
+    expect(() => fromBinary('0100000')).toThrow('Binary length must be a multiple of 8 bits.');
+  });
+  it('reports the non-binary error even when the length is a multiple of 8', () => {
+    expect(() => fromBinary('01020304')).toThrow('Binary must contain only 0 and 1.');
+  });
+  it('rejects bytes that are not valid UTF-8 and returns empty for empty input', () => {
+    expect(() => fromBinary('11111111')).toThrow('Decoded bytes are not valid UTF-8 text.');
+    expect(fromBinary('')).toBe('');
   });
 });
 

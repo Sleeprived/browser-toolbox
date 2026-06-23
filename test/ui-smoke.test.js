@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { exportStripSvg } from '../src/cipher/glyph-render.js';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -356,6 +357,249 @@ describe('morse UI', () => {
     loadBody('morse.html');
     await import('../src/morse/morse-ui.js');
     expect(document.getElementById('morse-vibrate').disabled).toBe(true);
+  });
+});
+
+describe('cipher UI', () => {
+  it('encodes text live with the default Tap Code format', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'HELLO';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('cipher-out').textContent).toBe('2-3 1-5 3-1 3-1 3-4');
+  });
+
+  it('renders real glyph geometry for pigpen encode (createElementNS)', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    const format = document.getElementById('cipher-format');
+    format.value = 'pigpen';
+    format.dispatchEvent(new window.Event('change'));
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'A';
+    inEl.dispatchEvent(new window.Event('input'));
+    const svg = document.querySelector('#cipher-visual svg');
+    expect(svg).not.toBeNull();
+    expect(svg.querySelectorAll('line').length).toBe(2);    // A = right + bottom edges
+    expect(svg.querySelectorAll('polygon').length).toBe(0); // pigpen never emits a flag
+  });
+
+  it('renders semaphore arms with flag polygons on visual encode', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    const format = document.getElementById('cipher-format');
+    format.value = 'semaphore';
+    format.dispatchEvent(new window.Event('change'));
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'D';
+    inEl.dispatchEvent(new window.Event('input'));
+    const svg = document.querySelector('#cipher-visual svg');
+    expect(svg).not.toBeNull();
+    expect(svg.querySelectorAll('line').length).toBe(2);    // two arms
+    expect(svg.querySelectorAll('polygon').length).toBe(2); // two flags (drawSemaphore ran)
+    expect(svg.querySelectorAll('circle').length).toBe(1);  // body
+  });
+
+  it('renders the dotted and X pigpen glyph branches (N, S, W)', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'NSW';
+    inEl.dispatchEvent(new window.Event('input'));
+    const svgs = document.querySelectorAll('#cipher-visual svg');
+    expect(svgs.length).toBe(3);
+    expect(svgs[0].querySelectorAll('line').length).toBe(4);   // N: full box (group 2)
+    expect(svgs[0].querySelectorAll('circle').length).toBe(1); // N: dot
+    expect(svgs[1].querySelectorAll('line').length).toBe(2);   // S: plain X chevron
+    expect(svgs[1].querySelectorAll('circle').length).toBe(0);
+    expect(svgs[2].querySelectorAll('line').length).toBe(2);   // W: dotted X
+    expect(svgs[2].querySelectorAll('circle').length).toBe(1); // W: dot
+  });
+
+  it('renders a word-break token and supports space/backspace edits', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    // encode: word break emits an SR-perceivable token
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'A B';
+    inEl.dispatchEvent(new window.Event('input'));
+    const gap = document.querySelector('#cipher-visual .word-gap span');
+    expect(gap).not.toBeNull();
+    expect(gap.textContent).toBe('space');
+    // decode: Insert space + Delete last edit the buffer
+    const dir = document.getElementById('cipher-dir');
+    dir.value = 'decode';
+    dir.dispatchEvent(new window.Event('change'));
+    const btnFor = (label) => [...document.querySelectorAll('#cipher-palette button')]
+      .find((b) => b.getAttribute('aria-label') === label);
+    btnFor('Letter H').dispatchEvent(new window.Event('click'));
+    btnFor('Insert space').dispatchEvent(new window.Event('click'));
+    btnFor('Letter I').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('cipher-out').textContent).toBe('H I');
+    btnFor('Delete last').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('cipher-out').textContent).toBe('H ');
+  });
+
+  it('uses the exact skipped/decode-loss notice strings', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    const inEl = document.getElementById('cipher-in');
+    const skipped = document.getElementById('cipher-skipped');
+    // encode skip (tapcode)
+    inEl.value = 'A1';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(skipped.textContent).toBe('Skipped (no code): 1');
+    // decode loss (baconian, one short group)
+    document.getElementById('cipher-format').value = 'baconian';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    document.getElementById('cipher-dir').value = 'decode';
+    document.getElementById('cipher-dir').dispatchEvent(new window.Event('change'));
+    inEl.value = 'AABB';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(skipped.textContent).toBe('1 token(s) could not be decoded.');
+  });
+
+  it('announces skipped characters on encode and undecodable tokens on decode', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    const inEl = document.getElementById('cipher-in');
+    const skipped = document.getElementById('cipher-skipped');
+    inEl.value = 'A1';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(skipped.classList.contains('hidden')).toBe(false);
+    expect(skipped.textContent).toContain('1');
+
+    const dir = document.getElementById('cipher-dir');
+    dir.value = 'decode';
+    dir.dispatchEvent(new window.Event('change'));
+    inEl.value = '0-1';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(skipped.textContent).toMatch(/could not be decoded/);
+  });
+
+  it('announces Clear and a destructive mode switch via the status region', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    const dir = document.getElementById('cipher-dir');
+    dir.value = 'decode';
+    dir.dispatchEvent(new window.Event('change'));
+    const btnFor = (label) => [...document.querySelectorAll('#cipher-palette button')]
+      .find((b) => b.getAttribute('aria-label') === label);
+    const status = document.getElementById('cipher-status');
+
+    btnFor('Letter H').dispatchEvent(new window.Event('click'));
+    btnFor('Clear all').dispatchEvent(new window.Event('click'));
+    expect(status.textContent).toBe('Cleared');
+
+    btnFor('Letter H').dispatchEvent(new window.Event('click'));
+    const format = document.getElementById('cipher-format');
+    format.value = 'semaphore';
+    format.dispatchEvent(new window.Event('change'));
+    expect(status.classList.contains('hidden')).toBe(false);
+    expect(status.textContent).toBe('Switched — palette cleared');
+  });
+
+  it('falls back to an SVG download when PNG rasterization fails', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    const inEl = document.getElementById('cipher-in');
+    inEl.value = 'A';
+    inEl.dispatchEvent(new window.Event('input'));
+
+    const blobs = [];
+    const origCreate = global.URL.createObjectURL;
+    const origRevoke = global.URL.revokeObjectURL;
+    const origClick = window.HTMLAnchorElement.prototype.click;
+    const OrigImage = global.Image;
+    global.URL.createObjectURL = (b) => { blobs.push(b); return 'blob:fake'; };
+    global.URL.revokeObjectURL = () => {};
+    window.HTMLAnchorElement.prototype.click = () => {};
+    // Image whose src setter triggers onerror -> exercises the SVG fallback path.
+    global.Image = class { set src(_v) { if (this.onerror) setTimeout(() => this.onerror(), 0); } };
+    try {
+      document.getElementById('cipher-download-png').dispatchEvent(new window.Event('click'));
+      await new Promise((r) => setTimeout(r, 10));
+      expect(document.getElementById('cipher-status').textContent).toMatch(/SVG instead/);
+      expect(blobs.some((b) => b.type === 'image/svg+xml')).toBe(true);
+    } finally {
+      global.URL.createObjectURL = origCreate;
+      global.URL.revokeObjectURL = origRevoke;
+      window.HTMLAnchorElement.prototype.click = origClick;
+      global.Image = OrigImage;
+    }
+  });
+
+  it('builds text by clicking the decode palette (pigpen decode)', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    const dir = document.getElementById('cipher-dir');
+    dir.value = 'decode';
+    dir.dispatchEvent(new window.Event('change'));
+
+    const btnFor = (label) => [...document.querySelectorAll('#cipher-palette button')]
+      .find((b) => b.getAttribute('aria-label') === label);
+    expect(btnFor('Letter H')).toBeTruthy();
+    btnFor('Letter H').dispatchEvent(new window.Event('click'));
+    btnFor('Letter I').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('cipher-out').textContent).toBe('HI');
+  });
+
+  it('clears the decode buffer when the mode changes', async () => {
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    const dir = document.getElementById('cipher-dir');
+    dir.value = 'decode';
+    dir.dispatchEvent(new window.Event('change'));
+    [...document.querySelectorAll('#cipher-palette button')]
+      .find((b) => b.getAttribute('aria-label') === 'Letter H')
+      .dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('cipher-out').textContent).toBe('H');
+
+    // switching format discards the buffer
+    const format = document.getElementById('cipher-format');
+    format.value = 'semaphore';
+    format.dispatchEvent(new window.Event('change'));
+    expect(document.getElementById('cipher-out').textContent).toBe('');
+  });
+});
+
+describe('cipher export SVG', () => {
+  it('builds a self-contained, taint-free export SVG (hardcoded colors, no external refs)', () => {
+    const svg = exportStripSvg('pigpen', ['A', 'B', '', 'C']);
+    expect(Number(svg.getAttribute('width'))).toBeGreaterThan(0);
+    expect(Number(svg.getAttribute('height'))).toBeGreaterThan(0);
+    const xml = new XMLSerializer().serializeToString(svg);
+    expect(xml).toContain('#ffffff');           // white background rect
+    expect(xml).toContain('#15171c');           // hardcoded dark ink
+    expect(xml).not.toContain('currentColor');  // must not depend on inherited color
+    for (const bad of ['href', 'xlink', '<image', '<use', '@import', 'url(']) {
+      expect(xml).not.toContain(bad);           // any external ref would taint the canvas
+    }
+    expect((xml.match(/<g[ >]/g) || []).length).toBe(3); // 3 letters; the '' word break adds no group
+  });
+
+  it('keeps the semaphore export path taint-free too (hardcoded ink, no external refs)', () => {
+    const svg = exportStripSvg('semaphore', ['D', 'I']);
+    expect(Number(svg.getAttribute('width'))).toBeGreaterThan(0);
+    const xml = new XMLSerializer().serializeToString(svg);
+    expect(xml).toContain('#15171c');
+    expect(xml).not.toContain('currentColor');
+    for (const bad of ['href', 'xlink', '<image', '<use', '@import', 'url(']) {
+      expect(xml).not.toContain(bad);
+    }
   });
 });
 
