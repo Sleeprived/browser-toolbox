@@ -2,6 +2,9 @@ import { quantize, pixelsFromRgba } from './quantize.js';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_EDGE = 256; // downscale long edge before reading pixels (bounds memory)
+// A small file can still decode to an enormous bitmap (decompression bomb); the
+// 256px downscale only runs AFTER the full-resolution decode. Reject outright.
+const MAX_IMAGE_PIXELS = 100 * 1000 * 1000; // 100 MP
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file');
@@ -139,9 +142,18 @@ function loadFile(file) {
   // Drop the previous image's cached pixels: if THIS load fails to decode, the
   // color-count slider must not resurrect the old palette next to a broken preview.
   lastPixels = null;
-  previewImg.src = currentUrl;
   const img = new Image();
-  img.onload = () => extractFromImage(img);
+  img.onload = () => {
+    // Bound decode-bomb memory: only show the preview and process once the
+    // dimensions are known to be sane.
+    if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
+      previewImg.removeAttribute('src');
+      showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
+      return;
+    }
+    previewImg.src = currentUrl;
+    extractFromImage(img);
+  };
   img.onerror = () => showError('Could not load that image.');
   img.src = currentUrl;
 }

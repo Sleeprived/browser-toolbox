@@ -1,6 +1,6 @@
 // Shared page bootstrap: clickjacking defense and service worker registration.
 
-// Clickjacking defense (audit-6 M4). The CSP is delivered via a <meta> tag,
+// Clickjacking defense. The CSP is delivered via a <meta> tag,
 // which cannot carry frame-ancestors, and GitHub Pages cannot send X-Frame-Options,
 // so bust frames in JS: if framed, try to break out; if a cross-origin parent
 // blocks that, blank the page so it cannot be overlaid for UI-redress.

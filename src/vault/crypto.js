@@ -19,11 +19,12 @@ export class VaultCryptoError extends Error {
 // be raised in a future version without breaking older files.
 export const DEFAULT_ITERATIONS = 600000;
 
-// Ceiling on the attacker-controllable iteration count from an opened vault file
-// (audit-6 M5). Without it, a crafted file could set iterations to billions
-// and freeze the tab in PBKDF2 before the password is even checked. 10M leaves
-// ample headroom to raise the work factor in future versions.
-export const MAX_ITERATIONS = 10000000;
+// Ceiling on the attacker-controllable iteration count from an opened vault file.
+// Without it, a crafted file could set iterations to billions and freeze the tab in
+// PBKDF2 before the password is even checked. 4M is ~6.7x the 600k default — ample
+// headroom to raise the work factor in future versions — while bounding the
+// worst-case main-thread freeze when opening a hostile file to a few seconds.
+export const MAX_ITERATIONS = 4000000;
 
 export const FORMAT = 'browser-toolbox-vault';
 export const FORMAT_VERSION = 1;

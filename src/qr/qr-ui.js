@@ -132,7 +132,7 @@ function matrixToSvg(matrix) {
   }
   const target = Number((document.getElementById('size') || {}).value) || 512;
   const px = Math.max(total, Math.floor(target / total) * total);
-  // audit-6 m8: the color inputs are <input type=color> (already #rrggbb),
+  // The color inputs are <input type=color> (already #rrggbb),
   // but defang the SVG-string interpolation so a future free-text color field
   // can't break out of the fill attribute into arbitrary SVG markup.
   const hex = (v, fallback) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback);

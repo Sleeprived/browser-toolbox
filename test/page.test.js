@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { preventFraming } from '../src/shared/page.js';
 
-describe('preventFraming (clickjacking defense, audit-6 M4)', () => {
+describe('preventFraming (clickjacking defense)', () => {
   it('does nothing when the page is not framed (self === top)', () => {
     let blanked = false;
     const win = { location: { href: 'https://x/vault.html' }, document: { documentElement: { replaceChildren: () => { blanked = true; } } } };

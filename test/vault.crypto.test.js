@@ -80,7 +80,7 @@ describe('encryptVault / decryptVault', () => {
     await expect(decryptVault(bad, 'pw')).rejects.toThrow(/IV length/i);
   });
 
-  it('rejects an implausibly high iteration count (open-a-hostile-file DoS guard, audit-6 M5)', async () => {
+  it('rejects an implausibly high iteration count (open-a-hostile-file DoS guard)', async () => {
     const env = await encryptVault(SAMPLE, 'pw', FAST);
     const bad = { ...env, kdf: { ...env.kdf, iterations: 2000000000 } };
     await expect(decryptVault(bad, 'pw')).rejects.toThrow(/implausibly high/i);

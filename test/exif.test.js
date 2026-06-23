@@ -50,13 +50,13 @@ describe('JPEG EXIF strip', () => {
     expect(after.orientation).toBe(6);
   });
 
-  it('M3: a stripped photo with Orientation reads clean by CONTENT, though an EXIF container remains', () => {
+  it('a stripped photo with Orientation reads clean by CONTENT, though an EXIF container remains', () => {
     // The strip re-inserts an Orientation-only EXIF block so cleaned photos are not
     // shown rotated, so a raw container scan still reports an EXIF segment present...
     const cleaned = jpeg.stripJpegMetadata(b64ToBytes(JPEG_WITH_EXIF_B64));
     expect(jpeg.scanJpegMetadata(cleaned).exif).toBe(true);
     // ...but NO identifying content survives — which is what the UI verdict checks
-    // after audit-6 M3 (so the cleaner no longer falsely warns on phone photos).
+    // (so the cleaner no longer falsely warns on phone photos).
     const after = jpeg.readExifSummary(cleaned);
     expect(after.gps).toBeNull();
     expect(after.make).toBeNull();
@@ -283,7 +283,7 @@ describe('JPEG metadata after the first scan (M3)', () => {
   });
 });
 
-describe('JPEG crafted entropy robustness (audit-5)', () => {
+describe('JPEG crafted entropy robustness', () => {
   it('does not truncate the scan on a crafted 0xFF 0xFF <non-marker> sequence', () => {
     // 0xFF inside entropy is only valid before 0x00 (stuffing) or a restart
     // marker. A crafted "0xFF 0xFF 0x30" must be walked through as scan data,

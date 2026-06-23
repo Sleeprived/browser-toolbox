@@ -136,7 +136,7 @@ self.addEventListener('fetch', (event) => {
 
   // Static assets: stale-while-revalidate. Serve the cached copy immediately for
   // speed/offline, and kick off a background fetch to refresh the cache so modules
-  // self-heal on a later load even if CACHE_VERSION was not bumped (audit-6 M6).
+  // self-heal on a later load even if CACHE_VERSION was not bumped.
   // Navigations are SWR too, so HTML and its module graph advance together (one load
   // behind); a concurrent revalidation can briefly mix cache generations within a
   // single load, which is harmless here since the modules are version-independent.

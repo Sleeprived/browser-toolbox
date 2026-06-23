@@ -93,7 +93,9 @@ verifyBtn.addEventListener('click', async () => {
     );
     const sig = b64urlToBytes(current.signature);
     const ok = await crypto.subtle.verify('HMAC', key, sig, enc.encode(current.signingInput));
-    verdictEl.textContent = ok ? '✓ Signature is VALID for this secret.' : '✗ Signature is INVALID for this secret.';
+    verdictEl.textContent = ok
+      ? `✓ Signature VALID for ${alg} with this secret. (This checks the signature only — not the claims.)`
+      : `✗ Signature INVALID for ${alg} with this secret.`;
   } catch {
     verdictEl.textContent = 'Could not verify (malformed signature or secret).';
   }
@@ -109,4 +111,7 @@ function b64urlToBytes(seg) {
 }
 
 input.addEventListener('input', render);
+// Editing the secret invalidates any prior verdict so a stale "VALID" can never
+// linger next to a secret it was not checked against.
+secretInput.addEventListener('input', () => { verdictEl.textContent = ''; });
 render();

@@ -6,6 +6,10 @@ import { analyzePayload } from './risk.js';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_SIDE = 2048; // cap canvas dimension to bound memory on huge images
+// A small file can still decode to an enormous bitmap (decompression bomb). The
+// canvas downscale below only bounds the OUTPUT canvas — the browser still decodes
+// the full-resolution source first — so reject implausibly large images outright.
+const MAX_IMAGE_PIXELS = 100 * 1000 * 1000; // 100 MP
 
 const KIND_LABEL = {
   url: 'Link (URL)',
@@ -175,6 +179,10 @@ function renderResult(raw) {
 function decodeImage(dataUrl) {
   const img = new Image();
   img.onload = () => {
+    if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
+      showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
+      return;
+    }
     const scale = Math.min(1, MAX_SIDE / Math.max(img.naturalWidth, img.naturalHeight));
     const w = Math.max(1, Math.round(img.naturalWidth * scale));
     const h = Math.max(1, Math.round(img.naturalHeight * scale));

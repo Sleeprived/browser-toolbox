@@ -87,7 +87,10 @@ export async function totp(keyBytes, opts = {}) {
   return hotp(keyBytes, counter, digits, algorithm);
 }
 
-// Seconds left in the current time-step, for the countdown UI.
+// Seconds left in the current time-step, for the countdown UI. Guards against an
+// invalid period (which would otherwise yield NaN / a negative countdown) so a
+// caller that skips totp()'s validation still gets a sane value.
 export function secondsRemaining(time, period = 30) {
+  if (!Number.isInteger(period) || period < 1) return 0;
   return period - (Math.floor(time) % period);
 }

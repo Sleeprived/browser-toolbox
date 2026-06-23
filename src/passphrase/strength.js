@@ -19,7 +19,7 @@ export const PENALTY_SEQUENTIAL = 12; // an ascending/descending run of length >
 export const PENALTY_COMMON = 30; // exact match against the bundled common-password list
 export const PENALTY_COMMON_AFFIX = 26; // a common word + substitutions/affixes (P@ssw0rd, password1!)
 export const PENALTY_KEYBOARD = 14; // a keyboard-adjacency walk (qwerty, asdf, 1234)
-// audit-7 BT7-3: PENALTY_IDENTICAL and PENALTY_REPEAT were removed — the
+// PENALTY_IDENTICAL and PENALTY_REPEAT were removed — the
 // all-identical and repeated-unit cases are now score CAPS (see estimateStrength),
 // not flat subtractions, because a flat penalty was outgrown by length.
 
@@ -90,7 +90,7 @@ function longestSequentialRun(password) {
 
 function repeatedUnitLength(password) {
   // Smallest unit length (>= 2) whose repetition equals the whole string, else 0.
-  // audit-6 M2: scan from unit length 2 so 2-char cycles ("abab...") count.
+  // Scan from unit length 2 so 2-char cycles ("abab...") count.
   const n = password.length;
   for (let unit = 2; unit <= n / 2; unit++) {
     if (n % unit !== 0) continue;
@@ -130,13 +130,40 @@ function keyboardWalkCoverage(password, minRun = 4) {
   return covered;
 }
 
-// Detect a common password possibly disguised by case, substitutions, or
-// leading/trailing digits/symbols. Returns 'exact', 'affix', or null.
-//
-// Known, intentional limitation (this is a rough guide, not a full cracker):
-// the affix trim only strips leading/trailing NON-letter padding. Interior
-// padding ("pass123word") and letter padding ("xpasswordx") are NOT unwrapped,
-// so those disguises read as their own tokens rather than the common word.
+// Longest alphabetic entry in the common-password list. Bounds the embedded-word
+// scan below so it stays linear. Computed once.
+const MAX_COMMON_WORD = (() => {
+  let m = 0;
+  for (const w of COMMON_PASSWORDS) if (/^[a-z]+$/.test(w) && w.length > m) m = w.length;
+  return m;
+})();
+
+// True if a common alphabetic password word (>= 5 chars) appears as a substring of
+// `lower` (or its leet-demangled form) AND covers at least half the string — i.e.
+// the password is essentially that common word with a little padding. The "half"
+// guard keeps a strong password that merely CONTAINS a short common word (e.g.
+// "Shark_Vm4!xQ9z") from being flagged. Bounded, linear work.
+function hasDominantCommonWord(lower, leet) {
+  const half = lower.length / 2;
+  for (const s of [lower, leet]) {
+    const n = s.length;
+    for (let i = 0; i < n; i++) {
+      const maxLen = Math.min(MAX_COMMON_WORD, n - i);
+      for (let len = maxLen; len >= 5 && len >= half; len--) {
+        const cand = s.slice(i, i + len);
+        if (/^[a-z]+$/.test(cand) && COMMON_PASSWORDS.has(cand)) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Detect a common password possibly disguised by case, substitutions, affixes, or
+// padding. Returns 'exact', 'affix', or null. The affix trim only strips leading/
+// trailing NON-letter padding; letter and interior padding ("xpasswordx",
+// "xq8passwordxq8") is caught by hasDominantCommonWord so a padded common word
+// cannot read Strong or clear the vault's 60-bit master-password gate. (The scan is
+// bounded to typed-length inputs to keep estimateStrength linear on huge pastes.)
 function commonMatch(password) {
   const lower = password.toLowerCase();
   if (COMMON_PASSWORDS.has(lower)) return 'exact';
@@ -146,6 +173,7 @@ function commonMatch(password) {
   for (const ch of lower) leet += LEET[ch] || ch;
   const leetCore = leet.replace(/[^a-z]/g, '');
   if (leetCore.length >= 3 && COMMON_PASSWORDS.has(leetCore)) return 'affix';
+  if (password.length <= 64 && hasDominantCommonWord(lower, leet)) return 'affix';
   return null;
 }
 
@@ -208,7 +236,7 @@ export function estimateStrength(password) {
   let bits = password.length * Math.log2(classSize || 1);
   const penalties = [];
 
-  // audit-6 M1/m3: cap (don't flat-subtract) for all-identical or very low
+  // Cap (don't flat-subtract) for all-identical or very low
   // character diversity. A flat penalty was outgrown by length*log2(classSize), so
   // "aaaaaaaaaaaaaaaaaa" read as Strong; the real guessing cost is tiny regardless
   // of length. This bits value also gates the vault master password
@@ -241,7 +269,7 @@ export function estimateStrength(password) {
     else bits -= PENALTY_KEYBOARD;
   }
 
-  // audit-7 BA7-1: a whole-string repeated unit (e.g. "Aa1!Aa1!Aa1!") has the
+  // A whole-string repeated unit (e.g. "Aa1!Aa1!Aa1!") has the
   // guessing cost of ONE unit plus knowing it repeats — cap it there instead of a
   // flat penalty that length*log2(classSize) outgrows (which let a 4+-distinct
   // repeated unit read Strong and pass the vault master gate). Covers the cases the

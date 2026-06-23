@@ -1,6 +1,9 @@
 import { computeTargetSize, orientationToTransform } from './image.js';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+// A small file can still decode to an enormous bitmap (decompression bomb); the
+// canvas clamp below only bounds the OUTPUT. Reject implausibly large sources.
+const MAX_IMAGE_PIXELS = 100 * 1000 * 1000; // 100 MP
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file');
@@ -52,21 +55,6 @@ function clampToCanvasLimits(w, h) {
   return { width: Math.max(1, Math.floor(w * scale)), height: Math.max(1, Math.floor(h * scale)) };
 }
 
-function readJpegOrientation(bytes) {
-  // Use the vendored piexif global if present; default to 1 (upright).
-  try {
-    const p = globalThis.piexif;
-    if (!p) return 1;
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-    const ex = p.load(bin);
-    const o = ex['0th'] && ex['0th'][274];
-    return typeof o === 'number' ? o : 1;
-  } catch {
-    return 1;
-  }
-}
-
 function loadFile(file) {
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
     showError('Please choose a JPEG, PNG, or WebP image.');
@@ -76,36 +64,35 @@ function loadFile(file) {
     showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
-    const bytes = new Uint8Array(reader.result);
-    const orientation = file.type === 'image/jpeg' ? readJpegOrientation(bytes) : 1;
-    const blob = new Blob([bytes], { type: file.type });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      srcBitmap = { img, width: img.naturalWidth, height: img.naturalHeight, orientation, type: file.type, size: file.size };
-      const t = orientationToTransform(orientation);
-      const dispW = t.swap ? img.naturalHeight : img.naturalWidth;
-      const dispH = t.swap ? img.naturalWidth : img.naturalHeight;
-      errorBox.classList.add('hidden');
-      resultBox.classList.remove('hidden');
-      // Guard against canvas OOM: a small file can still decode to a huge bitmap.
-      // Clamp the default target so the canvas stays within sane limits.
-      const def = clampToCanvasLimits(dispW, dispH);
-      widthInput.value = def.width;
-      heightInput.value = def.height;
-      if (def.width !== dispW || def.height !== dispH) {
-        showWarning(`That image is very large (${dispW}×${dispH}). Default size clamped to ${def.width}×${def.height} to avoid running out of memory; you can adjust it.`);
-      }
-      stats.textContent = `Original: ${dispW}×${dispH}, ${(file.size / 1024).toFixed(0)} KB`;
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); showError('Could not load that image.'); };
-    img.src = url;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    // Bound decode-bomb memory: a small file can decode to an enormous bitmap.
+    if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
+      showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
+      return;
+    }
+    // Modern browsers auto-orient images via the default `image-orientation:
+    // from-image`: naturalWidth/naturalHeight are already the upright dimensions and
+    // drawImage paints upright. Re-applying the EXIF Orientation tag here would
+    // rotate the image a SECOND time, so orientation is fixed to 1 (identity).
+    srcBitmap = { img, width: img.naturalWidth, height: img.naturalHeight, orientation: 1, type: file.type, size: file.size };
+    const dispW = img.naturalWidth;
+    const dispH = img.naturalHeight;
+    errorBox.classList.add('hidden');
+    resultBox.classList.remove('hidden');
+    // Clamp the default target so the canvas stays within sane limits.
+    const def = clampToCanvasLimits(dispW, dispH);
+    widthInput.value = def.width;
+    heightInput.value = def.height;
+    if (def.width !== dispW || def.height !== dispH) {
+      showWarning(`That image is very large (${dispW}×${dispH}). Default size clamped to ${def.width}×${def.height} to avoid running out of memory; you can adjust it.`);
+    }
+    stats.textContent = `Original: ${dispW}×${dispH}, ${(file.size / 1024).toFixed(0)} KB`;
   };
-  reader.onerror = () => showError('Could not read that file.');
-  reader.readAsArrayBuffer(file);
+  img.onerror = () => { URL.revokeObjectURL(url); showError('Could not load that image.'); };
+  img.src = url;
 }
 
 function render() {
@@ -120,7 +107,7 @@ function render() {
     height: Number(heightInput.value) || undefined,
     lock: lockChk.checked,
   });
-  // audit-6 m5: re-clamp manually-typed dimensions; clampToCanvasLimits was
+  // Re-clamp manually-typed dimensions; clampToCanvasLimits was
   // only applied to the on-load default, so a huge typed value could request an
   // over-limit canvas and silently fail toBlob.
   const clamped = clampToCanvasLimits(target.width, target.height);
@@ -155,7 +142,7 @@ function render() {
   const quality = Number(qualityRange.value);
   canvas.toBlob((blob) => {
     if (!blob) { showError('Could not encode the image in that format.'); return; }
-    // audit-7 BT7-2: keep THIS render's clamp notice visible; only dismiss a stale notice.
+    // Keep THIS render's clamp notice visible; only dismiss a stale notice.
     if (!didClamp) errorBox.classList.add('hidden');
     outBlob = blob;
     if (outUrl) URL.revokeObjectURL(outUrl);

@@ -89,7 +89,7 @@ describe('estimateStrength', () => {
     const short = estimateStrength('aaaaaa');
     expect(short.penalties).toContain('repeated character');
     expect(short.label).toBe('Very weak');
-    // audit-6 M1: a LONG identical string must NOT inflate to Strong via length.
+    // A LONG identical string must NOT inflate to Strong via length.
     const long = estimateStrength('aaaaaaaaaaaaaaaaaaaaaaaa'); // 24 'a'
     expect(long.label).toBe('Very weak');
     expect(long.bits).toBeLessThan(28);
@@ -108,7 +108,7 @@ describe('estimateStrength', () => {
     // A 3-char run ("abc") that does NOT dominate an otherwise high-entropy,
     // non-dictionary password must stay strong (flat penalty, no cap). The string
     // is deliberately free of dictionary words so the dictionary-composition cap
-    // (audit-8) does not apply here — this test is about sequential runs.
+    // does not apply here — this test is about sequential runs.
     const r = estimateStrength('Kp7-Zq9-abc-Vm4!xR');
     expect(r.penalties).toContain('sequential run');
     expect(r.penalties).not.toContain('dictionary words');
@@ -186,21 +186,21 @@ describe('estimateStrength', () => {
     expect(['Strong', 'Very strong']).not.toContain(r.label);
   });
 
-  it('M2: flags a 2-character alternating pattern as a repeated word', () => {
+  it('flags a 2-character alternating pattern as a repeated word', () => {
     expect(estimateStrength('ababab').penalties).toContain('repeated word');
     const long = estimateStrength('ababababababab'); // 14 chars; read "Strong" before the fix
     expect(['Strong', 'Very strong']).not.toContain(long.label);
   });
 
-  it('m3: caps a mostly-identical password with a tiny suffix', () => {
+  it('caps a mostly-identical password with a tiny suffix', () => {
     const r = estimateStrength('aaaaaaaaaaaa12'); // 12 a's + "12"; read "Strong" before the fix
     expect(['Strong', 'Very strong']).not.toContain(r.label);
     expect(r.penalties).toContain('few unique characters');
   });
 
-  it('BA7-1: caps a repeated multi-character unit so it cannot pass the vault gate', () => {
+  it('caps a repeated multi-character unit so it cannot pass the vault gate', () => {
     // "Aa1!Aa1!Aa1!" (a 4-distinct unit repeated) read 62.8 bits "Strong" and passed
-    // the vault's 60-bit master-password gate before the audit-7 cap.
+    // the vault's 60-bit master-password gate before this cap was added.
     for (const p of ['Aa1!Aa1!Aa1!', 'aB2@aB2@aB2@', 'Qw9#Qw9#Qw9#', 'aA1!aA1!aA1!aA1!aA1!']) {
       const r = estimateStrength(p);
       expect(r.penalties).toContain('repeated word');
@@ -220,7 +220,7 @@ describe('estimateStrength', () => {
     expect(r.label).toBe('Very weak');
   });
 
-  // audit-8: the strength meter used to score multi-word / repeated
+  // The strength meter used to score multi-word / repeated
   // dictionary-word compositions by length*log2(charset), so "password password"
   // read 100 bits and passed the vault's 60-bit master gate. They now cap to a
   // diceware-style word-count estimate and fail the gate.
@@ -244,6 +244,26 @@ describe('estimateStrength', () => {
     expect(['Strong', 'Very strong']).toContain(five.label);
     const six = estimateStrength('Abacus-Abdomen-Trombone-Relish-Battery-Staple');
     expect(six.bits).toBeGreaterThanOrEqual(60);
+  });
+
+  it('caps a common word hidden behind letter/interior padding below the 60-bit gate', () => {
+    // The affix trim only strips NON-letter padding; LETTER padding ("xpasswordx")
+    // and interior padding ("xq8passwordxq8") used to read Strong/Very strong and
+    // clear the vault's 60-bit master gate. They must now be flagged and capped.
+    for (const p of ['xpasswordx', 'qqqpasswordqqq', 'xqzpasswordxqz', 'Qz9passwordQz9', 'Xq8passwordXq8wz']) {
+      const r = estimateStrength(p);
+      expect(r.penalties).toContain('common password pattern');
+      expect(r.bits).toBeLessThan(60);
+      expect(['Strong', 'Very strong']).not.toContain(r.label);
+    }
+  });
+
+  it('does not flag a short common word that does not dominate a strong password', () => {
+    // "shark" is a listed common word but here it is < half the length, so the
+    // genuine entropy of the rest must keep the password strong (no false flag).
+    const r = estimateStrength('Shark_Vm4!xQ9z2bL');
+    expect(r.penalties).not.toContain('common password pattern');
+    expect(['Strong', 'Very strong']).toContain(r.label);
   });
 
   it('does not treat a single dictionary word amid non-dictionary noise as a composition', () => {

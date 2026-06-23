@@ -55,7 +55,7 @@ const state = {
 let totpTimer = null;
 let autoLockTimer = null;
 let clipboardTimer = null;
-let hiddenAt = null; // wall-clock time the tab was last hidden (audit-6 m6)
+let hiddenAt = null; // wall-clock time the tab was last hidden
 let editingTotp = null; // the editing entry's stored TOTP params, to preserve non-default digits/period/algorithm
 
 // ----- per-row password reveal (view a saved password without copying) -----
@@ -142,7 +142,7 @@ function lock() {
   // timer. Rejects silently if the document is not focused (e.g. background auto-lock).
   clearTimeout(clipboardTimer);
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText('').catch(() => {});
-  hiddenAt = null; // audit-7 BT7-5: reset the visibility-timer state on every lock
+  hiddenAt = null; // reset the visibility-timer state on every lock
   wipeMemory();
   // Clear sensitive master/unlock fields and the entire entry editor.
   for (const id of ['unlock-master', 'new-master', 'new-master-confirm', 'cm-new', 'cm-confirm']) {
@@ -996,7 +996,7 @@ function init() {
   for (const ev of ['click', 'keydown', 'input', 'touchstart']) {
     document.addEventListener(ev, resetAutoLock, { passive: true });
   }
-  // audit-6 m6: background tabs throttle the setTimeout auto-lock, and a
+  // Background tabs throttle the setTimeout auto-lock, and a
   // tab-switch does not fire pagehide. Track hidden time and lock on return if the
   // auto-lock interval already elapsed while we were away (a robust backstop to
   // the timer, without annoying early locks on a brief tab switch).

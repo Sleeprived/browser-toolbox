@@ -89,7 +89,7 @@
 - Bundles **jsQR 1.4.0** (Apache-2.0) as the in-browser decoder; attributed in `NOTICE`.
 - **Service worker bumped to v12** so the new tab reaches already-installed users.
 
-## 2026-06-22 — v1.3.1 — dark-only + deep-audit hardening
+## 2026-06-22 — v1.3.1 — dark-only + security/correctness hardening
 
 ### Changed
 - **Dark-only theme.** Removed the light theme and the header light/dark toggle —
@@ -183,7 +183,7 @@
   correctness). The audio/flash/vibration drivers are browser-only and are covered
   by an import-and-encode smoke test plus manual verification.
 
-## 2026-06-22 — v1.2.5 — re-audit follow-up
+## 2026-06-22 — v1.2.5 — security & correctness follow-up
 
 ### Fixed
 - **Passphrase / Vault (security):** a password made of a short unit repeated to
@@ -242,7 +242,7 @@
 - **QR SVG export** validates the colour values as `#rrggbb` before embedding them,
   hardening the export against a future free-text colour field.
 
-## 2026-06-21 — v1.2.3 — fixes from browser-toolbox-audit-5.md
+## 2026-06-21 — v1.2.3 — security & correctness fixes
 
 ### Fixed
 - **EXIF**: a crafted `FF FF <non-marker>` byte sequence in the scan data no
@@ -254,7 +254,7 @@
 ### Changed
 - **Service worker bumped to v7** so the above reach already-installed users.
 
-## 2026-06-21 — v1.2.2 — fixes from browser-toolbox-audit-4.md
+## 2026-06-21 — v1.2.2 — security & correctness fixes
 
 ### Fixed
 - **CSV**: a column header literally named `__proto__` no longer silently drops
@@ -290,9 +290,6 @@
 
 ### Notes
 - Tests 242 → 265 (a regression test for every logic fix; new `test/vault.lock.test.js`).
-  Full audit recorded internally. Deferred pending a spec decision: documenting the
-  four unscoped tools (vault/jwt/encode/image) and the palette/passphrase spec-wording
-  in the build spec.
 
 ## 2026-06-21 — v1.2.1
 
@@ -424,7 +421,7 @@
   quantization tables — both require re-encoding, which this lossless tool does
   not do.
 
-## 2026-06-20 — fixes from browser-toolbox-audit-2.md
+## 2026-06-20 — palette & styling fixes
 
 ### Fixed
 - **Empty palette message.** Dropping a fully transparent image into the Color
@@ -434,7 +431,7 @@
   translucent backgrounds (header and message boxes) so they still look right on
   browsers that do not support `color-mix()`.
 
-## 2026-06-20 — fixes from browser-toolbox-audit.md
+## 2026-06-20 — cron & QR fixes
 
 ### Fixed
 - **Cron `N/step` schedules.** Expressions like `0/15` or `5/20` (start at N,
@@ -455,7 +452,7 @@
 - Home page footer no longer links to a placeholder GitHub URL; it now reads
   plain text.
 
-## 2026-06-20 — browser-toolbox.md (initial build)
+## 2026-06-20 — initial build
 
 ### Added
 - **Project shell**: a static, multi-page, fully client-side site with a home

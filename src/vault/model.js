@@ -18,8 +18,7 @@ function newId() {
   const c = globalThis.crypto;
   if (c && typeof c.randomUUID === 'function') return c.randomUUID();
   // Fallback (should not be hit in supported browsers / Node 24). IDs are not
-  // secrets, but prefer a secure source over Math.random within the vault tree
-  // (audit-6 m2).
+  // secrets, but prefer a secure source over Math.random within the vault tree.
   if (c && typeof c.getRandomValues === 'function') {
     const r = c.getRandomValues(new Uint32Array(2));
     return 'e-' + r[0].toString(36) + r[1].toString(36);
@@ -37,8 +36,11 @@ function normalizeTotp(t) {
   if (secret === '') return null;
   return {
     secret,
-    digits: asInt(t.digits, 6),
-    period: asInt(t.period, 30),
+    // Clamp to RFC-valid ranges so an out-of-range integer from a hand-edited file
+    // or a malicious import is stored as a usable value (digits 1-10, period >= 1)
+    // rather than a permanently non-generating, uneditable entry.
+    digits: Math.min(10, Math.max(1, asInt(t.digits, 6))),
+    period: Math.max(1, asInt(t.period, 30)),
     algorithm: TOTP_ALGOS.includes(t.algorithm) ? t.algorithm : 'SHA-1',
   };
 }
