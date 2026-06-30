@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-06-30 — v1.8.0 — Cron Explainer: field breakdown, firing heatmap, OR-rule warning
+
+### Added
+- **Cron Explainer — field breakdown:** the expression is decoded into five labeled
+  cards (Minute, Hour, Day-of-month, Month, Day-of-week), each showing the raw token,
+  its legal range, and a resolved plain-text summary (weekday/month names, runs of
+  three or more collapsed into ranges).
+- **Cron Explainer — firing heatmap:** a weekday × hour grid over the next five weeks
+  (UTC) lights the slots the job runs in, with intensity scaled by frequency. Schedules
+  too rare to land in the window fall back to the next-run list with a note.
+- **Cron Explainer — OR-rule warning:** when both the day-of-month and day-of-week
+  fields are restricted, a callout explains cron's OR (not AND) semantics — the most
+  common cron footgun.
+- **Cron Explainer — syntax reference:** a collapsible cheat-sheet covering the five
+  fields, the `* , - /` operators, nicknames, the one-minute floor, the no-back-fill
+  behavior, and a note that extended `L`/`W`/`#`/seconds syntax is non-standard and
+  not parsed here.
+
+### Changed
+- Service worker bumped to v17 so the Cron Explainer enhancements reach installed users.
+
 ## 2026-06-23 — v1.7.0 — TOTP/2FA generator, hash & checksum verifier, security hardening
 
 ### Added
