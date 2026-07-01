@@ -7,6 +7,9 @@ import {
 } from './csv.js';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_RENDER_COLS = 200; // cap rendered table columns; full data stays in state and is still exported
+const MAX_COLS = 10000; // refuse absurdly wide input — a crafted single-line CSV of millions of commas would otherwise OOM the tab
+const MAX_ROWS = 1000000; // refuse a very TALL file before parseCsv/rowsToObjects freeze or OOM the tab
 
 const delimSel = document.getElementById('delim');
 const fileInput = document.getElementById('file');
@@ -50,6 +53,12 @@ function clearWarn() {
 }
 
 function setData(header, rows) {
+  if (header.length > MAX_COLS) {
+    showError(`That data has ${header.length} columns — over the ${MAX_COLS}-column limit. Trim it and try again.`);
+    state = { header: [], rows: [], sortCol: -1, sortDir: 1 };
+    render();
+    return;
+  }
   state = { header, rows, sortCol: -1, sortDir: 1 };
   render();
 }
@@ -65,9 +74,10 @@ function render() {
   outputCard.classList.remove('hidden');
   dims.textContent = `(${state.rows.length} rows × ${state.header.length} cols)`;
 
+  const colLimit = Math.min(state.header.length, MAX_RENDER_COLS);
   const thead = document.createElement('thead');
   const htr = document.createElement('tr');
-  state.header.forEach((name, idx) => {
+  state.header.slice(0, colLimit).forEach((name, idx) => {
     const th = document.createElement('th');
 
     const sortBtn = document.createElement('button');
@@ -106,7 +116,7 @@ function render() {
   const limit = Math.min(state.rows.length, 500);
   for (let r = 0; r < limit; r++) {
     const tr = document.createElement('tr');
-    for (let c = 0; c < state.header.length; c++) {
+    for (let c = 0; c < colLimit; c++) {
       const td = document.createElement('td');
       td.textContent = state.rows[r][c] !== undefined ? state.rows[r][c] : '';
       tr.appendChild(td);
@@ -114,9 +124,12 @@ function render() {
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
-  if (state.rows.length > limit) {
+  const notes = [];
+  if (state.rows.length > limit) notes.push(`first ${limit} of ${state.rows.length} rows`);
+  if (state.header.length > colLimit) notes.push(`first ${colLimit} of ${state.header.length} columns`);
+  if (notes.length) {
     const note = document.createElement('caption');
-    note.textContent = `Showing first ${limit} of ${state.rows.length} rows (all rows are exported).`;
+    note.textContent = `Showing ${notes.join(' and ')} (all data is still exported).`;
     table.appendChild(note);
   }
 }
@@ -156,7 +169,25 @@ function parseFromText() {
   clearError();
   clearWarn();
   try {
-    const rows = parseCsv(csvIn.value, delimiter());
+    const text = csvIn.value;
+    // Cheap O(n) pre-check: a tall file (e.g. 25 MB of newlines → ~26M rows) would make
+    // parseCsv + rowsToObjects freeze/OOM the tab. Count row breaks BEFORE parsing, using
+    // a conservative UPPER BOUND on the row count: count \n, or a \r not part of \r\n.
+    // Unlike parseCsv this does not track quotes, so newlines inside a quoted field are
+    // counted too; that only ever over-counts, which is safe for a reject-only guard.
+    // (Counting only \n let a bare-\r file — which parseCsv still splits into rows — slip
+    // past this guard and freeze the tab.)
+    let lineCount = 1;
+    for (let k = 0; k < text.length; k++) {
+      const ch = text.charCodeAt(k);
+      if (ch === 10 || (ch === 13 && text.charCodeAt(k + 1) !== 10)) lineCount++;
+    }
+    if (lineCount > MAX_ROWS) {
+      showError(`That data has about ${lineCount.toLocaleString()} rows — over the ${MAX_ROWS.toLocaleString()}-row limit. Trim it and try again.`);
+      setData([], []);
+      return;
+    }
+    const rows = parseCsv(text, delimiter());
     if (rows.length === 0) {
       showError('No data to parse.');
       setData([], []);
@@ -164,6 +195,14 @@ function parseFromText() {
     }
     let width = 0;
     for (const r of rows) if (r.length > width) width = r.length;
+    // Refuse an absurdly wide CSV BEFORE the expensive rowsToObjects/header build — a
+    // crafted single-line file of millions of commas would otherwise freeze the tab for
+    // seconds building the column structure (the MAX_COLS guard in setData runs too late).
+    if (width > MAX_COLS) {
+      showError(`That data has ${width} columns — over the ${MAX_COLS}-column limit. Trim it and try again.`);
+      setData([], []);
+      return;
+    }
     // Build the table header through rowsToObjects so it uses the SAME padded,
     // de-duplicated column names as the JSON/CSV export path — otherwise a CSV with
     // duplicate or empty header names shows different columns in the table vs JSON.

@@ -352,6 +352,7 @@ svg.glyph { width: 44px; height: 44px; display: block; color: var(--text); }
   margin-top: 6px;
 }
 .glyph-strip .word-gap { width: 22px; }
+.glyph-truncated { flex-basis: 100%; margin-top: 6px; color: var(--text-dim); font-size: 0.85rem; }
 .glyph-chart {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));

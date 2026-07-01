@@ -348,3 +348,48 @@ describe('PNG hardened strip (eXIf / AI text / trailing)', () => {
     expect(pngTrailingByteCount(cleaned)).toBe(0);
   });
 });
+
+describe('JPEG APP14/Adobe scan (m5: legit kept-segment vs stuffed)', () => {
+  it('does NOT flag a legitimate, correctly-sized Adobe APP14 as leftover metadata', () => {
+    const legit = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      jpegSegment(0xee, 'Adobe\0\0d\0\0\0\0'), // 12-byte payload -> len 14 (<= 16)
+      Uint8Array.of(0xff, 0xd9),
+    ]);
+    expect(jpeg.scanJpegMetadata(legit).other).toBe(false);
+  });
+
+  it('flags a NON-Adobe or OVERSIZED (stuffed) 0xEE segment as leftover metadata', () => {
+    const stuffed = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      jpegSegment(0xee, 'Adobe\0\0d\0\0\0\0' + 'GPS_40.44N_79.98W_SECRET'), // oversized APP14
+      Uint8Array.of(0xff, 0xd9),
+    ]);
+    expect(jpeg.scanJpegMetadata(stuffed).other).toBe(true);
+
+    const nonAdobe = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      jpegSegment(0xee, 'XYZ_not_adobe_payload'),
+      Uint8Array.of(0xff, 0xd9),
+    ]);
+    expect(jpeg.scanJpegMetadata(nonAdobe).other).toBe(true);
+  });
+
+  it('strips stuffed bytes from an oversized Adobe APP14 — canonicalizes to 14 bytes (A10-7)', () => {
+    const stuffed = concatBytes([
+      Uint8Array.of(0xff, 0xd8),
+      Uint8Array.from(SOF0_2x2),
+      jpegSegment(0xee, 'Adobe\x00\x00d\x00\x00\x00\x01' + 'GPS_40.44N_79.98W_SECRET'), // 12 Adobe bytes + stuffed
+      Uint8Array.of(0xff, 0xd9),
+    ]);
+    const cleaned = jpeg.stripJpegMetadata(stuffed);
+    const out = asLatin1(cleaned);
+    expect(out.includes('GPS_40.44N_79.98W_SECRET')).toBe(false); // stuffed bytes dropped
+    expect(out.includes('Adobe')).toBe(true);                     // canonical Adobe segment kept
+    expect(jpeg.scanJpegMetadata(cleaned).other).toBe(false);     // cleaned file re-scans clean
+    expect(jpeg.readJpegDimensions(cleaned)).toEqual({ width: 2, height: 2 });
+  });
+});

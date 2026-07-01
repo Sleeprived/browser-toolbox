@@ -98,6 +98,19 @@ describe('csv UI', () => {
     expect(JSON.parse(document.getElementById('json-out').textContent))
       .toEqual([{ a: '1', b: '2', column_3: '3' }]);
   });
+
+  it('refuses a tall file even when its rows are split by bare CR (\\r)', async () => {
+    // Regression: the tall-file guard once counted only \n, but parseCsv also splits
+    // rows on a lone \r — so a \r-delimited paste slipped past the guard and froze the
+    // tab. The guard must trip (and NOT run parseCsv) here.
+    loadBody('csv.html');
+    await import('../src/csv/csv-ui.js');
+    document.getElementById('csv-in').value = '\r'.repeat(1000001); // > MAX_ROWS (1,000,000)
+    document.getElementById('parse').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('error').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('error').textContent).toMatch(/row limit/);
+    expect(document.getElementById('table-card').classList.contains('hidden')).toBe(true);
+  });
 });
 
 describe('encode UI', () => {
@@ -202,6 +215,27 @@ describe('vault UI', () => {
     confirm.value = 'vault-master-correct-horse-staple-9!';
     confirm.dispatchEvent(new window.Event('input'));
     expect(btn.disabled).toBe(false);
+  });
+
+  it('keeps the create button disabled (and labels "Strong") for a score-4 master under the guesses floor', async () => {
+    // "correcthorsebattery" is zxcvbn score 4 but below the ~36-bit guesses floor. The
+    // two-part gate must reject it at the UI even though the two entries match, and the
+    // meter must NOT read "Very strong". Guards against a future revert to a score-only gate.
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    document.getElementById('create-new').dispatchEvent(new window.Event('click'));
+
+    const pw = document.getElementById('new-master');
+    const confirm = document.getElementById('new-master-confirm');
+    pw.value = 'correcthorsebattery';
+    pw.dispatchEvent(new window.Event('input'));
+    confirm.value = 'correcthorsebattery';
+    confirm.dispatchEvent(new window.Event('input'));
+
+    expect(document.getElementById('create-confirm').disabled).toBe(true);
+    const label = document.getElementById('master-strength').textContent;
+    expect(label).toContain('Strong');         // downgraded display label
+    expect(label).not.toContain('Very strong'); // must not claim the top tier the gate refused
   });
 
   it('cancelling the create form returns to the locked screen', async () => {

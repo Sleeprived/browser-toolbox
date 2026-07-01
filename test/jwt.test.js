@@ -38,6 +38,13 @@ describe('claims + flags', () => {
     expect(securityFlags({ alg: 'HS256' }, {})).toEqual(expect.arrayContaining([expect.stringMatching(/exp/i)]));
     expect(securityFlags({ alg: 'HS256' }, { exp: 1 })).toEqual([]);
   });
+  it('warns when exp is a string or non-finite value (not just missing)', () => {
+    expect(securityFlags({ alg: 'HS256' }, { exp: '1700000000' })).toEqual(expect.arrayContaining([expect.stringMatching(/exp/i)]));
+    expect(securityFlags({ alg: 'HS256' }, { exp: 'abc' })).toEqual(expect.arrayContaining([expect.stringMatching(/exp/i)]));
+    expect(securityFlags({ alg: 'HS256' }, { exp: null })).toEqual(expect.arrayContaining([expect.stringMatching(/exp/i)]));
+    // a valid finite numeric exp must NOT warn
+    expect(securityFlags({ alg: 'HS256' }, { exp: 1700000000 })).toEqual([]);
+  });
   it('computes expiry status', () => {
     expect(expiryStatus({ exp: NOW / 1000 - 10 }, NOW)).toBe('expired');
     expect(expiryStatus({ nbf: NOW / 1000 + 10 }, NOW)).toBe('not-yet-valid');

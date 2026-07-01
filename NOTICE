@@ -14,3 +14,6 @@ and update both this version and the matching pin in package.json):
   browser. The distributed jsQR.js carries no inline license header and upstream
   ships no NOTICE file, so this entry is the required attribution; the full
   Apache-2.0 license text is at https://www.apache.org/licenses/LICENSE-2.0.
+- zxcvbn 4.4.2 (MIT) — Dropbox, Inc. (Daniel Lowe Wheeler and contributors)
+  (https://github.com/dropbox/zxcvbn). Used to rate typed-password strength and
+  gate the Password Vault's master password, entirely in the browser.

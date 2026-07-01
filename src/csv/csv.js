@@ -155,7 +155,7 @@ export function rowsToObjects(rows) {
 }
 
 // Convert an array of objects to rows (header + data) for serialization.
-export function objectsToRows(objects) {
+export function objectsToRows(objects, maxCols = 10000) {
   if (!Array.isArray(objects)) throw new CsvError('Expected a JSON array of objects');
   const header = [];
   const seen = new Set();
@@ -167,6 +167,9 @@ export function objectsToRows(objects) {
       if (!seen.has(key)) {
         seen.add(key);
         header.push(key);
+        // Bound the column count so a JSON object with millions of distinct keys
+        // cannot freeze the tab here (the UI's later MAX_COLS guard runs too late).
+        if (header.length > maxCols) throw new CsvError(`Too many columns (over ${maxCols}); refusing to build the table.`);
       }
     }
   }

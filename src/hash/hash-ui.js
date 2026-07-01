@@ -4,7 +4,7 @@
 // textContent (the digest is hex; the file name and verdict are inert text).
 import { bytesToHex, hexEquals } from './hash.js';
 
-const MAX_FILE_BYTES = 250 * 1024 * 1024; // hashing reads the whole file into memory
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // hashing reads the whole file into memory; matches the app-wide 25 MB file cap
 
 const textInput = document.getElementById('hash-text');
 const algoSel = document.getElementById('hash-algo');
@@ -23,6 +23,9 @@ let lastSource = ''; // human label of the source
 
 function showError(msg) { errorBox.textContent = msg; errorBox.classList.remove('hidden'); }
 function clearError() { errorBox.classList.add('hidden'); }
+// Clear any prior digest + verdict so a rejected or unreadable file can't leave a
+// stale "✓ Match" result on screen next to the new error.
+function clearResult() { lastData = null; lastSource = ''; out.textContent = ''; sourceEl.textContent = ''; updateVerdict(); }
 
 async function digestHex(algo, data) {
   const buf = await crypto.subtle.digest(algo, data);
@@ -67,7 +70,8 @@ function setText() {
 function setFile(file) {
   if (!file) return;
   if (file.size > MAX_FILE_BYTES) {
-    showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 250 MB limit for in-browser hashing.`);
+    showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit for in-browser hashing.`);
+    clearResult();
     return;
   }
   const reader = new FileReader();
@@ -78,7 +82,7 @@ function setFile(file) {
     clearError();
     recompute();
   };
-  reader.onerror = () => showError('Could not read that file.');
+  reader.onerror = () => { showError('Could not read that file.'); clearResult(); };
   reader.readAsArrayBuffer(file);
 }
 

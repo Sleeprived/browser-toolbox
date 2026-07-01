@@ -65,8 +65,9 @@ export function securityFlags(header, payload) {
   if (typeof alg === 'string' && alg.toLowerCase() === 'none') {
     warnings.push('Algorithm is "none": this token is unsigned and trivially forgeable.');
   }
-  if (!payload || payload.exp == null) {
-    warnings.push('No "exp" claim: this token has no expiry.');
+  const exp = (payload && typeof payload === 'object') ? payload.exp : undefined;
+  if (exp == null || typeof exp !== 'number' || !Number.isFinite(exp)) {
+    warnings.push('No valid "exp" claim: this token has no usable expiry.');
   }
   return warnings;
 }

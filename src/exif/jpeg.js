@@ -163,6 +163,13 @@ export function scanJpegMetadata(bytes) {
       found.iptc = true;
     } else if (marker === 0xfe) {
       found.comment = true;
+    } else if (marker === 0xee) {
+      // APP14/Adobe is structural and KEPT verbatim by the rebuild, so a legitimate,
+      // correctly-sized Adobe segment is not "leftover metadata" (avoids a false
+      // "could not remove metadata" warning on Adobe/CMYK JPEGs). But a NON-Adobe or
+      // OVERSIZED 0xEE is kept verbatim too and could smuggle stuffed identifying
+      // bytes past the strip — still flag that as leftover so the re-scan warns.
+      if (!startsWith(dataOff, 'Adobe') || len > 16) found.other = true;
     } else if (marker >= 0xe1 && marker <= 0xef) {
       found.other = true;
     }
@@ -233,6 +240,21 @@ function rebuildJpegAllowlist(bytes) {
         ));
       }
       // else: JFXX or unknown APP0 — drop it.
+    } else if (marker === 0xee) {
+      // APP14/Adobe carries the color-transform flag needed for correct CMYK/YCCK
+      // display, so keep it — but re-emit a CANONICAL 14-byte Adobe segment and DROP
+      // any bytes stuffed past the standard structure. Copying an oversized segment
+      // verbatim would smuggle attacker-chosen identifying bytes past the strip. A
+      // non-Adobe or malformed 0xEE is dropped entirely.
+      const dataOff = i + 2;
+      const isAdobe = dataOff + 5 <= n &&
+        bytes[dataOff] === 0x41 && bytes[dataOff + 1] === 0x64 && bytes[dataOff + 2] === 0x6f &&
+        bytes[dataOff + 3] === 0x62 && bytes[dataOff + 4] === 0x65; // "Adobe"
+      if (isAdobe && len >= 14 && dataOff + 12 <= n) {
+        parts.push(Uint8Array.of(0xff, 0xee, 0x00, 0x0e));     // marker + length 14
+        parts.push(bytes.subarray(dataOff, dataOff + 12));      // canonical Adobe body only
+      }
+      // else: non-Adobe or malformed APP14 — drop it.
     } else if (isStructuralMarker(marker)) {
       parts.push(bytes.subarray(markerStart, segEnd));
     }

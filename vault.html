@@ -176,7 +176,7 @@
           </div>
           <div id="gen-words-wrap" class="hidden">
             <label for="gen-words">Words: <span id="gen-words-val">5</span></label>
-            <input type="range" id="gen-words" min="3" max="10" value="5" />
+            <input type="range" id="gen-words" min="4" max="10" value="5" />
             <div class="check"><input type="checkbox" id="gen-cap" checked /><label for="gen-cap">Capitalize each word</label></div>
           </div>
           <div class="btn-row">
@@ -234,6 +234,7 @@
     Encrypted locally with AES-256-GCM + PBKDF2 &middot; nothing is uploaded &middot; you keep and back up the file
   </footer>
 
+  <script src="assets/vendor/zxcvbn.js"></script>
   <script type="module" src="src/shared/page.js"></script>
   <script type="module" src="src/vault/vault-ui.js"></script>
 </body>

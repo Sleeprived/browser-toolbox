@@ -5,12 +5,7 @@ import {
   secureRandomInt,
   WORDLIST_SIZE,
 } from '../src/passphrase/generate.js';
-import {
-  estimateStrength,
-  labelForBits,
-  PENALTY_SEQUENTIAL,
-  PENALTY_COMMON,
-} from '../src/passphrase/strength.js';
+import { estimateStrength, scoreToPercent, MASTER_MIN_SCORE, MASTER_MIN_LOG10, meetsMasterGate } from '../src/passphrase/strength.js';
 
 const WL = ['alpha', 'bravo', 'charlie', 'delta', 'echo', 'foxtrot', 'golf', 'hotel'];
 
@@ -74,201 +69,109 @@ describe('generatorEntropyBits', () => {
   });
 });
 
-describe('estimateStrength', () => {
-  it('treats empty input as zero', () => {
-    expect(estimateStrength('')).toEqual({ bits: 0, label: '—', length: 0, classSize: 0, penalties: [] });
+// The strength meter is now backed by zxcvbn (the vendored global, set on
+// globalThis by test/setup.js). These tests assert the vault master-password GATE
+// (zxcvbn score 4) and the meter shape — NOT zxcvbn's internal scoring.
+describe('estimateStrength (zxcvbn-backed)', () => {
+  it('treats empty input as zero with the em-dash label', () => {
+    expect(estimateStrength('')).toEqual({ score: 0, guessesLog10: 0, bits: 0, label: '—', length: 0, warning: '', suggestions: [] });
   });
 
-  it('rates a strong mixed password highly', () => {
-    const r = estimateStrength('Tr0ub4d# relish9X');
-    expect(r.bits).toBeGreaterThan(80);
-    expect(r.label).toBe('Very strong');
-  });
-
-  it('penalizes all-identical characters and caps them low regardless of length', () => {
-    const short = estimateStrength('aaaaaa');
-    expect(short.penalties).toContain('repeated character');
-    expect(short.label).toBe('Very weak');
-    // A LONG identical string must NOT inflate to Strong via length.
-    const long = estimateStrength('aaaaaaaaaaaaaaaaaaaaaaaa'); // 24 'a'
-    expect(long.label).toBe('Very weak');
-    expect(long.bits).toBeLessThan(28);
-  });
-
-  it('penalizes and caps a dominant sequential run', () => {
-    // "abcdef" is a pure ascending walk — real guessing cost is tiny, so it is
-    // CAPPED to low-diversity bits (not just flat-penalized) and reads Very weak.
-    const r = estimateStrength('abcdef');
-    expect(r.penalties).toContain('sequential run');
-    expect(r.bits).toBeCloseTo(Math.log2(26) + Math.log2(6), 1);
-    expect(r.label).toBe('Very weak');
-  });
-
-  it('only flat-penalizes an incidental short run in an otherwise strong password', () => {
-    // A 3-char run ("abc") that does NOT dominate an otherwise high-entropy,
-    // non-dictionary password must stay strong (flat penalty, no cap). The string
-    // is deliberately free of dictionary words so the dictionary-composition cap
-    // does not apply here — this test is about sequential runs.
-    const r = estimateStrength('Kp7-Zq9-abc-Vm4!xR');
-    expect(r.penalties).toContain('sequential run');
-    expect(r.penalties).not.toContain('dictionary words');
-    expect(['Strong', 'Very strong']).toContain(r.label);
-  });
-
-  it('caps a long sequential walk so it cannot pass the vault master gate (60 bits)', () => {
-    for (const p of ['ABCDEFGHIJKLMNOP', 'abcdefghijklmnopqrstuvwxyz', 'zyxwvutsrqponmlk', 'Abcdefghijklmno']) {
+  it('rejects weak passwords below the vault gate (score < 4) — including the heuristic-era bypasses', () => {
+    // The old hand-rolled estimator rated several of these "Very strong" and let them
+    // clear the master-password gate; zxcvbn must reject them all.
+    for (const p of ['password', 'hunter2', 'password1', 'AAAAaaaa1111!!!!', 'horsehorse99',
+      'abcde'.repeat(52), 'qwerty123', 'aaaabbbbccccdddd']) {
       const r = estimateStrength(p);
-      expect(r.bits).toBeLessThan(60);
-      expect(['Strong', 'Very strong']).not.toContain(r.label);
+      expect(r.score).toBeLessThan(MASTER_MIN_SCORE);
+      expect(r.label).not.toBe('Very strong');
     }
   });
 
-  it('caps a multi-row keyboard walk so it cannot pass the vault master gate (60 bits)', () => {
-    const r = estimateStrength('qwertyuiopasdfghjkl');
-    expect(r.penalties).toContain('keyboard pattern');
-    expect(r.bits).toBeLessThan(60);
-    expect(['Strong', 'Very strong']).not.toContain(r.label);
-  });
-
-  it('penalizes a common password', () => {
-    const r = estimateStrength('password');
-    expect(r.penalties).toContain('common password');
-    expect(r.label).toBe('Very weak');
-  });
-
-  it('penalizes a keyboard walk (qwerty)', () => {
-    const r = estimateStrength('qwerty');
-    expect(r.penalties).toContain('keyboard pattern');
-  });
-
-  it('sees through leetspeak on a common word (w3lc0m3 -> welcome)', () => {
-    const r = estimateStrength('w3lc0m3');
-    expect(r.penalties).toContain('common password pattern');
-    expect(['Very weak', 'Weak']).toContain(r.label);
-  });
-
-  it('still rates a literal listed leet password as a common password', () => {
-    expect(estimateStrength('p@ssw0rd').penalties).toContain('common password');
-  });
-
-  it('does not let a common word + trailing digit/symbol read as strong', () => {
-    const r = estimateStrength('Password1!');
-    expect(r.penalties).toContain('common password pattern');
-    expect(['Strong', 'Very strong']).not.toContain(r.label);
-  });
-
-  it('never returns negative bits', () => {
-    expect(estimateStrength('111111').bits).toBeGreaterThanOrEqual(0);
-  });
-
-  it('maps bits to labels at the boundaries', () => {
-    expect(labelForBits(0, false)).toBe('—');   // empty input
-    expect(labelForBits(0)).toBe('Very weak');  // non-empty, zero bits
-    expect(labelForBits(20)).toBe('Very weak');
-    expect(labelForBits(35)).toBe('Weak');
-    expect(labelForBits(50)).toBe('Fair');
-    expect(labelForBits(70)).toBe('Strong');
-    expect(labelForBits(90)).toBe('Very strong');
-  });
-
-  it('does not flag alternating patterns as a sequential run', () => {
-    const r = estimateStrength('ababab');
-    expect(r.penalties).not.toContain('sequential run');
-  });
-
-  it('still flags a true ascending run', () => {
-    expect(estimateStrength('abcdef').penalties).toContain('sequential run');
-  });
-
-  it('penalizes a doubled dictionary word so it cannot read as Strong', () => {
-    const r = estimateStrength('passwordpassword'); // "password" x2; not in common list as a whole
-    expect(r.penalties).toContain('repeated word');
-    expect(['Strong', 'Very strong']).not.toContain(r.label);
-  });
-
-  it('flags a 2-character alternating pattern as a repeated word', () => {
-    expect(estimateStrength('ababab').penalties).toContain('repeated word');
-    const long = estimateStrength('ababababababab'); // 14 chars; read "Strong" before the fix
-    expect(['Strong', 'Very strong']).not.toContain(long.label);
-  });
-
-  it('caps a mostly-identical password with a tiny suffix', () => {
-    const r = estimateStrength('aaaaaaaaaaaa12'); // 12 a's + "12"; read "Strong" before the fix
-    expect(['Strong', 'Very strong']).not.toContain(r.label);
-    expect(r.penalties).toContain('few unique characters');
-  });
-
-  it('caps a repeated multi-character unit so it cannot pass the vault gate', () => {
-    // "Aa1!Aa1!Aa1!" (a 4-distinct unit repeated) read 62.8 bits "Strong" and passed
-    // the vault's 60-bit master-password gate before this cap was added.
-    for (const p of ['Aa1!Aa1!Aa1!', 'aB2@aB2@aB2@', 'Qw9#Qw9#Qw9#', 'aA1!aA1!aA1!aA1!aA1!']) {
+  it('passes a genuinely strong passphrase at the vault gate (score 4)', () => {
+    for (const p of ['correct horse battery staple', 'Abacus-Abdomen-Trombone-Relish-Battery',
+      'Xk9$mQ2!vR7p', 'My-Dog-Has-Fleas-2024']) {
       const r = estimateStrength(p);
-      expect(r.penalties).toContain('repeated word');
-      expect(r.bits).toBeLessThan(60);
-      expect(['Strong', 'Very strong']).not.toContain(r.label);
+      expect(r.score).toBe(4);
+      expect(r.label).toBe('Very strong');
     }
   });
 
-  it('does NOT add a repeated-word penalty to an all-identical string', () => {
-    // "aaaaaa" is covered by the identical-character penalty only — the
-    // repeated-word check must not double-count it.
-    expect(estimateStrength('aaaaaa').penalties).not.toContain('repeated word');
+  it('exposes a bits readout derived from zxcvbn guesses', () => {
+    const r = estimateStrength('correct horse battery staple');
+    expect(typeof r.bits).toBe('number');
+    expect(r.bits).toBeGreaterThan(40);
   });
 
-  it('labels a non-empty low-entropy password as Very weak, not em-dash', () => {
-    const r = estimateStrength('aaaaaa'); // identical → ~10 bits
-    expect(r.label).toBe('Very weak');
+  it('the vault gate threshold is zxcvbn score 4 ("strong protection from offline slow-hash")', () => {
+    expect(MASTER_MIN_SCORE).toBe(4);
   });
 
-  // The strength meter used to score multi-word / repeated
-  // dictionary-word compositions by length*log2(charset), so "password password"
-  // read 100 bits and passed the vault's 60-bit master gate. They now cap to a
-  // diceware-style word-count estimate and fail the gate.
-  it('caps multi-word and repeated dictionary-word compositions below the 60-bit master gate', () => {
-    for (const p of [
-      'password password', 'passwordmonkey', 'admin99admin', 'master99master',
-      'letmein letmein', 'baseballfootball', 'welcomemaster', 'monkey.monkey',
-    ]) {
+  it('maps score to an increasing meter percentage', () => {
+    expect(scoreToPercent(0)).toBe(10);
+    expect(scoreToPercent(4)).toBe(100);
+    expect(scoreToPercent(0)).toBeLessThan(scoreToPercent(4));
+  });
+
+  it('caps the analysed length so a huge paste cannot pass the gate or freeze the field', () => {
+    const r = estimateStrength('a'.repeat(100000)); // analysed as the first 100 'a' -> very weak
+    expect(r.score).toBeLessThan(MASTER_MIN_SCORE);
+    expect(r.length).toBe(100000); // the TRUE length is still reported for display
+  });
+
+  it('fails CLOSED when the zxcvbn engine is unavailable (gate never passes an unrated password)', () => {
+    const saved = globalThis.zxcvbn;
+    try {
+      delete globalThis.zxcvbn;
+      const r = estimateStrength('correct horse battery staple');
+      expect(r.score).toBe(0);
+      expect(r.label).toBe('Very weak');
+      // The vault create flow surfaces this warning so the fail-closed case is not
+      // misread as a merely "weak" password — keep the exact contract string.
+      expect(r.warning).toBe('Strength checker unavailable.');
+    } finally {
+      globalThis.zxcvbn = saved;
+    }
+  });
+});
+
+// The vault master gate is score 4 AND a guesses floor (~zxcvbn log10(guesses) 11),
+// not score alone — so a long-but-low-entropy password that reaches score 4 (e.g.
+// "correcthorsebattery") is still rejected, while every generator output (>=4-word
+// passphrase / >=16-char random) clears it.
+describe('meetsMasterGate (score 4 AND guesses floor)', () => {
+  it('rejects a long-but-low-entropy score-4 password under the guesses floor', () => {
+    const r = estimateStrength('correcthorsebattery');
+    expect(r.score).toBe(4); // zxcvbn score alone would have passed it
+    expect(r.guessesLog10).toBeLessThan(MASTER_MIN_LOG10);
+    expect(meetsMasterGate(r)).toBe(false);
+  });
+
+  it('accepts a genuine passphrase that clears both the score and the floor', () => {
+    for (const p of ['correct horse battery staple', 'My-Dog-Has-Fleas-2024', 'Xk9$mQ2!vR7p']) {
       const r = estimateStrength(p);
-      expect(r.penalties).toContain('dictionary words');
-      expect(r.bits).toBeLessThan(60);
-      expect(['Strong', 'Very strong']).not.toContain(r.label);
+      expect(r.score).toBe(MASTER_MIN_SCORE);
+      expect(r.guessesLog10).toBeGreaterThanOrEqual(MASTER_MIN_LOG10);
+      expect(meetsMasterGate(r)).toBe(true);
     }
   });
 
-  it('still passes a genuinely random 5+-word generated passphrase', () => {
-    // Mimics the vault generator output: distinct EFF words, hyphen-separated,
-    // capitalized. The dictionary cap must NOT push real generated output below 60.
-    const five = estimateStrength('Abacus-Abdomen-Trombone-Relish-Battery');
-    expect(five.bits).toBeGreaterThanOrEqual(60);
-    expect(['Strong', 'Very strong']).toContain(five.label);
-    const six = estimateStrength('Abacus-Abdomen-Trombone-Relish-Battery-Staple');
-    expect(six.bits).toBeGreaterThanOrEqual(60);
+  it('the gate floor is zxcvbn log10(guesses) >= 11 (compared on the raw value, not rounded bits)', () => {
+    expect(MASTER_MIN_LOG10).toBe(11);
+    // A password whose raw guesses sits just under 11 must be rejected even if its
+    // rounded display "bits" would land on the old 36.5 boundary.
+    const r = estimateStrength('correcthorsebattery');
+    expect(r.guessesLog10).toBeLessThan(MASTER_MIN_LOG10);
+    expect(meetsMasterGate(r)).toBe(false);
   });
 
-  it('caps a common word hidden behind letter/interior padding below the 60-bit gate', () => {
-    // The affix trim only strips NON-letter padding; LETTER padding ("xpasswordx")
-    // and interior padding ("xq8passwordxq8") used to read Strong/Very strong and
-    // clear the vault's 60-bit master gate. They must now be flagged and capped.
-    for (const p of ['xpasswordx', 'qqqpasswordqqq', 'xqzpasswordxqz', 'Qz9passwordQz9', 'Xq8passwordXq8wz']) {
-      const r = estimateStrength(p);
-      expect(r.penalties).toContain('common password pattern');
-      expect(r.bits).toBeLessThan(60);
-      expect(['Strong', 'Very strong']).not.toContain(r.label);
+  it('does not meet the gate when the engine is unavailable (fails closed)', () => {
+    const saved = globalThis.zxcvbn;
+    try {
+      delete globalThis.zxcvbn;
+      expect(meetsMasterGate(estimateStrength('correct horse battery staple'))).toBe(false);
+    } finally {
+      globalThis.zxcvbn = saved;
     }
-  });
-
-  it('does not flag a short common word that does not dominate a strong password', () => {
-    // "shark" is a listed common word but here it is < half the length, so the
-    // genuine entropy of the rest must keep the password strong (no false flag).
-    const r = estimateStrength('Shark_Vm4!xQ9z2bL');
-    expect(r.penalties).not.toContain('common password pattern');
-    expect(['Strong', 'Very strong']).toContain(r.label);
-  });
-
-  it('does not treat a single dictionary word amid non-dictionary noise as a composition', () => {
-    const r = estimateStrength('Tr0ub4d# relish9X'); // only "relish" is a dictionary word
-    expect(r.penalties).not.toContain('dictionary words');
-    expect(r.bits).toBeGreaterThan(80);
   });
 });

@@ -13,7 +13,7 @@ describe('bytesToHex', () => {
 describe('normalizeHex', () => {
   it('lowercases and strips non-hex characters (spaces, colons, 0x)', () => {
     expect(normalizeHex('AB:CD ef')).toBe('abcdef');
-    expect(normalizeHex('0xDEADbeef')).toBe('0deadbeef'); // '0x' prefix: 'x' stripped, '0' kept
+    expect(normalizeHex('0xDEADbeef')).toBe('deadbeef'); // leading '0x' prefix is stripped whole
     expect(normalizeHex('  d4 1d\n8c  ')).toBe('d41d8c');
   });
   it('non-string yields empty', () => {

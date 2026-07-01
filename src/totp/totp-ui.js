@@ -17,6 +17,8 @@ const copied = document.getElementById('totp-copied');
 let params = null; // parsed otpauth config
 let keyBytes = null; // decoded base32 secret
 let timer = null;
+let wipeTimer = null; // wipes the secret from memory after the tab stays hidden a while
+const WIPE_AFTER_HIDDEN_MS = 60000;
 
 function showError(msg) {
   errorBox.textContent = msg;
@@ -26,6 +28,21 @@ function showError(msg) {
 
 function stop() {
   if (timer) { clearInterval(timer); timer = null; }
+}
+
+// Drop the decoded secret + parsed config from memory and clear the input, so a
+// pasted 2FA secret does not linger in a backgrounded or unloaded tab. Mirrors the
+// vault's lock-on-hide discipline (the standalone tool has no separate master gate).
+function wipeSecret() {
+  stop();
+  keyBytes = null;
+  params = null;
+  input.value = '';
+  codeEl.textContent = '';
+  countEl.textContent = '';
+  metaEl.textContent = '';
+  resultBox.classList.add('hidden');
+  errorBox.classList.add('hidden');
 }
 
 function formatCode(code) {
@@ -94,9 +111,17 @@ copyBtn.addEventListener('click', async () => {
 
 input.addEventListener('input', update);
 // Stop the timer when the tab is hidden; resume on return so a backgrounded tab
-// isn't spinning a 1s interval forever.
+// isn't spinning a 1s interval forever. After a longer hidden period (or on page
+// unload) wipe the decoded secret from memory entirely.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) stop();
-  else if (keyBytes && !timer) { tick(); timer = setInterval(tick, 1000); }
+  if (document.hidden) {
+    stop();
+    clearTimeout(wipeTimer);
+    wipeTimer = setTimeout(wipeSecret, WIPE_AFTER_HIDDEN_MS);
+  } else {
+    clearTimeout(wipeTimer);
+    if (keyBytes && !timer) { tick(); timer = setInterval(tick, 1000); }
+  }
 });
+window.addEventListener('pagehide', wipeSecret);
 update();

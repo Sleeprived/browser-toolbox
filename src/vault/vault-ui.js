@@ -31,12 +31,13 @@ import { TARGET_FIELDS, detectMapping, mapRowToFields, isRowEmpty, canImport } f
 import { generatePassword } from './passgen.js';
 import { generatePassphrase } from '../passphrase/generate.js';
 import { EFF_WORDLIST } from '../../assets/data/eff_wordlist.js';
-import { estimateStrength } from '../passphrase/strength.js';
+import { estimateStrength, scoreToPercent, MASTER_MIN_SCORE, meetsMasterGate } from '../passphrase/strength.js';
 
 const $ = (id) => document.getElementById(id);
-const MASTER_MIN_BITS = 60; // require a genuinely strong master password
 const CLIPBOARD_CLEAR_MS = 25000;
 const DEFAULT_FILENAME = 'vault.browser-toolbox.json';
+const MAX_FILE_BYTES = 25 * 1024 * 1024; // app-wide cap: warn & skip any file over 25 MB
+const MIN_ITERATIONS = 100000; // refuse a vault file whose KDF work factor is implausibly low (crafted/tampered)
 
 // ----- in-memory state (never persisted) -----
 const state = {
@@ -183,14 +184,22 @@ const STRENGTH_COLORS = {
   Fair: 'var(--warn)', Strong: 'var(--good)', 'Very strong': 'var(--good)',
 };
 
-function updateMeter(barEl, labelEl, pw) {
+// masterFloor: for the create / change-master meters, a score-4 password that still
+// sits under the gate's guesses floor must not read "Very strong" — or fill the bar —
+// while the button stays disabled. Entry-password meters pass false (no gate).
+function updateMeter(barEl, labelEl, pw, masterFloor = false) {
   const r = estimateStrength(pw);
-  const pct = Math.max(0, Math.min(100, r.bits));
+  const underFloor = masterFloor && pw.length > 0 && r.score >= MASTER_MIN_SCORE && !meetsMasterGate(r);
+  const label = underFloor ? 'Strong' : r.label;
+  // Width tracks the DISPLAYED label, not the raw score: cap an under-floor bar to the
+  // score-3 (Strong) width so the bar, colour, and aria-valuenow agree with the "Strong"
+  // label and stop short of the full bar a passing "Very strong" password earns.
+  const pct = pw.length === 0 ? 0 : scoreToPercent(underFloor ? 3 : r.score);
   barEl.style.width = pct + '%';
-  barEl.style.background = STRENGTH_COLORS[r.label] || 'var(--text-dim)';
-  barEl.setAttribute('aria-valuenow', String(Math.round(pct)));
-  barEl.setAttribute('aria-valuetext', pw.length === 0 ? 'no password entered' : `${r.label}, about ${r.bits} bits`);
-  if (labelEl) labelEl.textContent = pw.length === 0 ? ' ' : `${r.label} · ~${r.bits} bits`;
+  barEl.style.background = STRENGTH_COLORS[label] || 'var(--text-dim)';
+  barEl.setAttribute('aria-valuenow', String(pct));
+  barEl.setAttribute('aria-valuetext', pw.length === 0 ? 'no password entered' : `${label}, about ${r.bits} bits`);
+  if (labelEl) labelEl.textContent = pw.length === 0 ? ' ' : `${label} · ~${r.bits} bits`;
   return r;
 }
 
@@ -242,11 +251,22 @@ function stopAutoLock() { clearTimeout(autoLockTimer); autoLockTimer = null; }
 // ============================================================
 async function onFileChosen(file) {
   hide($('open-error'));
+  if (file.size > MAX_FILE_BYTES) {
+    setError($('open-error'), `That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit for a vault file.`);
+    return;
+  }
   let envelope;
   try {
     envelope = JSON.parse(await file.text());
   } catch {
     setError($('open-error'), 'That file is not valid JSON. Choose a vault file exported by this tool.');
+    return;
+  }
+  // Refuse a file whose KDF work factor is implausibly low: opening it would reduce
+  // PBKDF2 to near-zero cost (the app only ever writes DEFAULT_ITERATIONS), so such a
+  // file is crafted or tampered. The high-side cap lives in the crypto validator.
+  if (envelope && envelope.kdf && Number.isInteger(envelope.kdf.iterations) && envelope.kdf.iterations < MIN_ITERATIONS) {
+    setError($('open-error'), 'This vault file uses too few key-derivation iterations to be safe (it may be tampered or hand-edited). Refusing to open it.');
     return;
   }
   state.pendingEnvelope = envelope;
@@ -289,8 +309,13 @@ async function doCreate() {
   const confirm = $('new-master-confirm').value;
   hide($('create-error'));
   const r = estimateStrength(pw);
-  if (r.bits < MASTER_MIN_BITS) {
-    setError($('create-error'), `Master password is too weak (~${r.bits} bits). Use a longer passphrase — aim for "Strong".`);
+  if (!meetsMasterGate(r)) {
+    // Surface the strength engine's own note first: it distinguishes a genuinely weak
+    // password ("This is a top-100 common password") from the fail-closed case where the
+    // checker itself could not load ("Strength checker unavailable.") — otherwise both
+    // look like a plain "too weak" message.
+    const why = r.warning ? `${r.warning} ` : '';
+    setError($('create-error'), `${why}Master password is too weak (~${r.bits} bits). Use the generator or a longer passphrase so it rates "Very strong".`);
     return;
   }
   if (pw !== confirm) { setError($('create-error'), 'The two master passwords do not match.'); return; }
@@ -700,15 +725,15 @@ function useGenerated() {
 // ============================================================
 function updateChangeMasterGate() {
   const pw = $('cm-new').value;
-  const r = updateMeter($('cm-meter-bar'), $('cm-strength'), pw);
-  $('cm-apply').disabled = !(r.bits >= MASTER_MIN_BITS && pw && pw === $('cm-confirm').value);
+  const r = updateMeter($('cm-meter-bar'), $('cm-strength'), pw, true);
+  $('cm-apply').disabled = !(meetsMasterGate(r) && pw && pw === $('cm-confirm').value);
 }
 
 async function applyChangeMaster() {
   const pw = $('cm-new').value;
   // Defense-in-depth re-check (mirrors doCreate): never derive a key from a master
   // password below the strength floor, even if the disabled-button gate is bypassed.
-  if (estimateStrength(pw).bits < MASTER_MIN_BITS || pw !== $('cm-confirm').value) {
+  if (!meetsMasterGate(estimateStrength(pw)) || pw !== $('cm-confirm').value) {
     const msg = $('cm-msg');
     msg.className = 'msg error';
     msg.textContent = 'Master password is too weak, or the two entries do not match.';
@@ -747,8 +772,8 @@ async function applyChangeMaster() {
 // ============================================================
 function updateCreateGate() {
   const pw = $('new-master').value;
-  const r = updateMeter($('master-meter-bar'), $('master-strength'), pw);
-  $('create-confirm').disabled = !(r.bits >= MASTER_MIN_BITS && pw && pw === $('new-master-confirm').value);
+  const r = updateMeter($('master-meter-bar'), $('master-strength'), pw, true);
+  $('create-confirm').disabled = !(meetsMasterGate(r) && pw && pw === $('new-master-confirm').value);
 }
 
 // ============================================================
@@ -802,6 +827,10 @@ function startImport() {
 }
 
 async function onCsvChosen(file) {
+  if (file.size > MAX_FILE_BYTES) {
+    showImportError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
+    return;
+  }
   let text;
   try { text = await file.text(); } catch { showImportError('Could not read that file.'); return; }
   let header, rows;

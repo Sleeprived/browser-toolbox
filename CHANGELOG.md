@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-06-25 — v1.8.1 — stronger master-password gate + DoS guard fix
+
+### Changed
+- **Password Vault — stronger master-password gate.** Your master password must now clear
+  not just zxcvbn's "Very strong" score but a minimum guess-resistance (≈36 bits). This
+  rejects long-but-low-entropy passwords such as "correcthorsebattery" that the
+  score-alone check accepted, bringing protection back in line with earlier versions.
+  Every built-in generator output (4+ word passphrase, 16+ character random) still passes,
+  and the vault's passphrase generator minimum is raised from 3 to 4 words to match.
+- Service worker bumped to v19 so installed users receive these changes.
+
+### Fixed
+- **CSV ⇄ JSON:** the very-tall-file guard now also counts rows split by a bare carriage
+  return (old-Mac line endings), closing a gap where a "\r"-delimited paste could still
+  freeze the tab.
+- **Password Vault:** if the strength checker can't load, the create screen now says so
+  instead of showing a misleading "too weak" message (it already refused to proceed).
+
+## 2026-06-23 — v1.8.0 — stronger password-strength checking (zxcvbn) + hardening
+
+### Changed
+- **Password strength is now measured by zxcvbn**, a real pattern-matching estimator,
+  replacing the previous lightweight heuristic on both the Passphrase page and the
+  Password Vault. The vault now requires your master password to rate "Very strong"
+  (zxcvbn's "strong protection from an offline attack") — long-but-weak passwords the
+  old meter over-rated (repeated or padded patterns, e.g. "AAAAaaaa1111!!!!") are now
+  correctly rejected. Analysis is capped to the first 100 characters so a large paste
+  can't freeze the field. This adds a one-time ~400 KB cached download on the Passphrase
+  and Vault pages.
+- Service worker bumped to v18 so installed users receive these changes.
+
+### Fixed
+- **EXIF Cleaner:** an Adobe colour-profile (APP14) segment is now re-emitted in its
+  canonical form, so a crafted JPEG can no longer smuggle extra bytes past the strip.
+- **CSV ⇄ JSON:** a very tall file (millions of rows), or a pasted JSON object with a huge
+  number of keys, is now refused before it can freeze the tab — matching the existing
+  wide-file guard.
+- **TOTP / 2FA Generator:** the generated code and label are now cleared from the page
+  (not just hidden) when the secret is wiped after the tab has been hidden a while.
+- **JWT Decoder:** a token whose payload is a bare value rather than an object is handled
+  correctly (the "no usable expiry" warning still fires).
+
+## 2026-06-23 — v1.7.1 — security & denial-of-service hardening
+
+### Fixed
+- **Password Vault:** opening a vault file or importing a CSV now warns and skips
+  anything over 25 MB instead of reading the whole file into memory (a multi-gigabyte
+  file could otherwise freeze the tab). A vault file whose key-derivation iteration
+  count is implausibly low — a sign it was tampered with or hand-edited — is now
+  refused rather than opened with near-zero key-stretching strength.
+- **Hash & Checksum:** the file-size limit is now 25 MB (was 250 MB), matching the
+  rest of the app — a very large file was read entirely into memory and could crash
+  the tab. A rejected or unreadable file no longer leaves a previous "✓ Match" result
+  on screen. A checksum pasted with a leading "0x" now compares correctly instead of
+  reading as a mismatch.
+- **CSV ⇄ JSON:** a file with an enormous number of columns no longer freezes the tab
+  — the table shows the first 200 columns (all data is still exported) and absurdly
+  wide input is refused.
+- **Cipher Studio:** the Pigpen/Semaphore visual encoder no longer freezes on a very
+  long paste; it draws the first 2000 symbols and notes the message was truncated for
+  display.
+- **TOTP / 2FA Generator:** the decoded secret is now cleared from memory after the tab
+  has been hidden for a while or is unloaded, instead of staying in memory for the life
+  of the tab.
+- **EXIF Cleaner:** a correctly-cleaned JPEG that legitimately keeps a structural Adobe
+  colour-transform segment no longer shows a false "some metadata could not be removed"
+  warning.
+- **JWT Decoder:** a token whose "exp" is text rather than a number now shows the "no
+  usable expiry" warning instead of appearing to have a valid expiry.
+- **Colour Palette & Image Resizer:** the oversized-image (decompression-bomb) guard is
+  tightened from 100 MP to 64 MP to lower peak memory on a crafted image; any realistic
+  photo is still accepted.
+- **Passphrase strength meter:** pasting a very large string into the password field no
+  longer freezes it — the repeated-pattern detection is now linear-time over the whole
+  input (no rating changes).
+
+### Changed
+- Service worker bumped to v17 so installed users receive these fixes.
+
 ## 2026-06-23 — v1.7.0 — TOTP/2FA generator, hash & checksum verifier, security hardening
 
 ### Added

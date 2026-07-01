@@ -9,7 +9,7 @@ const MAX_SIDE = 2048; // cap canvas dimension to bound memory on huge images
 // A small file can still decode to an enormous bitmap (decompression bomb). The
 // canvas downscale below only bounds the OUTPUT canvas — the browser still decodes
 // the full-resolution source first — so reject implausibly large images outright.
-const MAX_IMAGE_PIXELS = 100 * 1000 * 1000; // 100 MP
+const MAX_IMAGE_PIXELS = 64 * 1000 * 1000; // 64 MP (~256 MB peak bitmap) — matches the image/palette guards
 
 const KIND_LABEL = {
   url: 'Link (URL)',

@@ -12,11 +12,12 @@ export function bytesToHex(bytes) {
   return hex;
 }
 
-// Normalize a user-pasted checksum for comparison: lowercase and drop everything
-// that is not a hex digit (whitespace, colons, "0x", line breaks). So a checksum
-// copied as "AB:CD ef" matches a computed "abcdef".
+// Normalize a user-pasted checksum for comparison: lowercase, strip a leading
+// "0x"/"0X" prefix (after any leading whitespace), then drop everything that is not a
+// hex digit (whitespace, colons, line breaks). So a checksum copied as "AB:CD ef",
+// "0xABCDef", or "  0xABCDef" all match a computed "abcdef".
 export function normalizeHex(s) {
-  return (typeof s === 'string' ? s : '').toLowerCase().replace(/[^0-9a-f]/g, '');
+  return (typeof s === 'string' ? s : '').toLowerCase().replace(/^\s*0x/, '').replace(/[^0-9a-f]/g, '');
 }
 
 // True only if both inputs normalize to the same non-empty hex string.

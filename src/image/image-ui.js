@@ -3,7 +3,7 @@ import { computeTargetSize, orientationToTransform } from './image.js';
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 // A small file can still decode to an enormous bitmap (decompression bomb); the
 // canvas clamp below only bounds the OUTPUT. Reject implausibly large sources.
-const MAX_IMAGE_PIXELS = 100 * 1000 * 1000; // 100 MP
+const MAX_IMAGE_PIXELS = 64 * 1000 * 1000; // 64 MP (~256 MB peak bitmap) — still allows any realistic camera/phone photo
 
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('file');

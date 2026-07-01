@@ -38,6 +38,7 @@ const VISUAL = {
   semaphore: { split: textToSemaphore, letters: SEM_LETTERS },
 };
 const isVisual = (f) => f === 'pigpen' || f === 'semaphore';
+const MAX_VISUAL_GLYPHS = 2000; // cap the live per-keystroke glyph render so a huge paste can't freeze the tab
 
 // Buffer built by clicking glyphs in visual-decode mode.
 let decodeBuffer = '';
@@ -106,7 +107,11 @@ function renderVisualEncode(format) {
   const nodes = [];
   if (text !== '') {
     const { letters, skipped } = VISUAL[format].split(text);
-    for (const ch of letters) {
+    // Cap the live render: drawing one SVG per letter on every keystroke would freeze
+    // the tab on a very long paste. Show the first N glyphs plus an inline notice.
+    const capped = letters.length > MAX_VISUAL_GLYPHS;
+    const shown = capped ? letters.slice(0, MAX_VISUAL_GLYPHS) : letters;
+    for (const ch of shown) {
       if (ch === '') {
         const gap = document.createElement('span');
         gap.className = 'word-gap';
@@ -118,6 +123,12 @@ function renderVisualEncode(format) {
       } else {
         nodes.push(glyphSvg(format, ch));
       }
+    }
+    if (capped) {
+      const note = document.createElement('span');
+      note.className = 'glyph-truncated';
+      note.textContent = `… message too long to draw — showing the first ${MAX_VISUAL_GLYPHS} glyphs.`;
+      nodes.push(note);
     }
     if (skipped.length) showSkipped(`Skipped (no glyph): ${skipped.join(' ')}`);
   }

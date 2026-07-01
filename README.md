@@ -61,7 +61,10 @@ understanding before you rely on it:
   Anyone who obtains your vault file can guess passwords against it offline, as
   fast as their hardware allows, with no rate limit. A generated passphrase (5+
   words) or a long random password is effectively uncrackable; a short or
-  human-guessable one is not. The strength meter is a guide, not a guarantee.
+  human-guessable one is not. The vault checks your master password with zxcvbn
+  and requires a "Very strong" rating *and* enough guess-resistance, so a long but
+  low-entropy phrase is still refused — but no meter is a guarantee; the built-in
+  generator is the safest choice.
 - **You are trusting this site to serve honest code on every load.** Like any
   web-delivered tool, the page's JavaScript decrypts your vault in your browser,
   so a compromise of the hosting could in principle ship tampered code. For the
@@ -77,4 +80,5 @@ out of date, just refresh once more.
 
 ## Credits
 Passphrase wordlist: [EFF Large Wordlist](https://www.eff.org/dice)
-(CC BY 3.0 US).
+(CC BY 3.0 US). Password-strength estimation:
+[zxcvbn](https://github.com/dropbox/zxcvbn) (MIT) by Dropbox.

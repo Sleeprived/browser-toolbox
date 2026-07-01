@@ -1,5 +1,5 @@
 import { generatePassphrase, generatorEntropyBits } from './generate.js';
-import { estimateStrength } from './strength.js';
+import { estimateStrength, scoreToPercent } from './strength.js';
 import { EFF_WORDLIST } from '../../assets/data/eff_wordlist.js';
 
 const wordsRange = document.getElementById('words');
@@ -77,15 +77,15 @@ const STRENGTH_COLORS = {
 function updateStrength() {
   const pw = pwInput.value;
   const r = estimateStrength(pw);
-  const pct = Math.max(0, Math.min(100, (r.bits / 100) * 100));
+  const pct = pw.length === 0 ? 0 : scoreToPercent(r.score);
   meterBar.style.width = pct + '%';
   meterBar.style.background = STRENGTH_COLORS[r.label] || 'var(--text-dim)';
-  meterBar.setAttribute('aria-valuenow', String(Math.round(pct)));
+  meterBar.setAttribute('aria-valuenow', String(pct));
   meterBar.setAttribute('aria-valuetext', pw.length === 0 ? 'no password entered' : `${r.label}, about ${r.bits} bits`);
   if (pw.length === 0) {
     strengthEl.textContent = ' ';
   } else {
-    const extra = r.penalties.length ? ` — weak spots: ${r.penalties.join(', ')}` : '';
+    const extra = r.suggestions.length ? ` — weak spots: ${r.suggestions.join(', ')}` : '';
     strengthEl.textContent = `${r.label} · ~${r.bits} bits${extra}`;
   }
 }
