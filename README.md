@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Fourteen handy tools that run entirely in your web browser — no upload, no account,
+Fifteen handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -36,7 +36,8 @@ Screen** to install it like an app.
   automatic photo-rotation correction.
 - **Morse Code Studio** — translate text to and from International Morse Code,
   then play it as audio, download it as a WAV, flash it on screen, or vibrate it
-  on supported phones. Adjustable speed (with Farnsworth) and tone.
+  on supported phones. Adjustable speed (with Farnsworth) and tone. Or go the
+  other way: tap what you hear (keyboard or touch pad) and read it as text.
 - **Cipher Studio** — encode and decode classic secret codes: **Tap Code** (the
   POW knock code), **Baconian**, **Pigpen**, and **Semaphore**. The visual codes
   render as glyph/flag diagrams (downloadable as SVG or PNG) and decode by
@@ -46,6 +47,10 @@ Screen** to install it like an app.
   long-term storage use the Password Vault.
 - **Hash & Checksum Verifier** — compute SHA-1/256/384/512 of text or a file (via
   the browser's Web Crypto) and verify a download against its published checksum.
+- **Barcode Generator** — create linear barcodes: **Code 128** (any text or
+  numbers), **EAN-13**, and **UPC-A** (retail, with the check digit computed or
+  verified for you). Custom colors, size, and quiet zone; optional human-readable
+  text; download as PNG or SVG, or copy the image.
 
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no

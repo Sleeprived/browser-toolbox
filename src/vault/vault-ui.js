@@ -223,8 +223,19 @@ async function copyText(text, note = 'Copied') {
   }
   if (ok) {
     clearTimeout(clipboardTimer);
-    clipboardTimer = setTimeout(() => {
-      navigator.clipboard.writeText('').catch(() => {});
+    clipboardTimer = setTimeout(async () => {
+      try {
+        // Clear only if the clipboard still holds what we put there — the user
+        // may have copied something else since, and that must not be destroyed.
+        // Where the clipboard can't be read (no readText in Firefox), clear
+        // unconditionally as before; where it can't be verified (permission
+        // denied), leave it alone.
+        if (navigator.clipboard.readText) {
+          const current = await navigator.clipboard.readText();
+          if (current !== text) return;
+        }
+        await navigator.clipboard.writeText('');
+      } catch { /* unfocused or read denied — leave the clipboard alone */ }
     }, CLIPBOARD_CLEAR_MS);
   }
 }

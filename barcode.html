@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Barcode Generator — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Barcode Generator</h1>
+    <p class="lead">Create linear barcodes — Code&nbsp;128, EAN-13, and UPC-A — entirely in your browser. Download as PNG or SVG, or copy the image.</p>
+
+    <div class="card">
+      <label for="symbology">Barcode type</label>
+      <select id="symbology">
+        <option value="code128">Code 128 (text &amp; numbers)</option>
+        <option value="ean13">EAN-13 (retail, 12–13 digits)</option>
+        <option value="upca">UPC-A (retail, 11–12 digits)</option>
+      </select>
+
+      <label for="data">Data</label>
+      <input type="text" id="data" autocomplete="off" spellcheck="false" value="ABC-12345" />
+      <p id="hint" class="lead" aria-live="polite"></p>
+      <p id="barcode-status" class="msg" role="status" aria-live="polite" hidden></p>
+    </div>
+
+    <div class="card">
+      <h2>Appearance</h2>
+      <div class="row">
+        <div>
+          <label for="fg">Bar color</label>
+          <input type="color" id="fg" value="#000000" />
+        </div>
+        <div>
+          <label for="bg">Background</label>
+          <input type="color" id="bg" value="#ffffff" />
+        </div>
+        <div>
+          <label for="scale">Bar width</label>
+          <select id="scale">
+            <option value="1">Thin (1×)</option>
+            <option value="2" selected>Normal (2×)</option>
+            <option value="3">Thick (3×)</option>
+            <option value="4">Extra (4×)</option>
+          </select>
+        </div>
+        <div>
+          <label for="height">Bar height</label>
+          <select id="height">
+            <option value="80">Short</option>
+            <option value="120" selected>Medium</option>
+            <option value="180">Tall</option>
+          </select>
+        </div>
+      </div>
+      <label for="quiet">Quiet-zone margin: <span id="quiet-val">10</span> modules</label>
+      <input type="range" id="quiet" min="8" max="20" value="10" />
+      <div class="check"><input type="checkbox" id="hrt" checked /><label for="hrt">Show human-readable text</label></div>
+      <div id="color-warn" class="msg warn hidden" role="alert"></div>
+    </div>
+
+    <div id="barcode-error" class="msg error hidden" role="alert"></div>
+
+    <div id="result" class="card hidden">
+      <div class="preview">
+        <canvas id="canvas" width="300" height="140" aria-label="Barcode preview"></canvas>
+        <div>
+          <div class="btn-row">
+            <button class="btn" type="button" id="dl-png">Download PNG</button>
+            <button class="btn secondary" type="button" id="dl-svg">Download SVG</button>
+            <button class="btn secondary" type="button" id="copy-img">Copy image</button>
+          </div>
+          <p id="copied" class="lead hidden" aria-live="polite"></p>
+          <p id="encoded" class="lead" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Your barcodes are built entirely in your browser. Nothing you enter is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/barcode/barcode-ui.js"></script>
+</body>
+</html>

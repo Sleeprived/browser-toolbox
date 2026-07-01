@@ -7,6 +7,7 @@ import { timelineToWav } from './wav.js';
 
 let audioCtx = null;
 let activeOsc = null;
+let toneOsc = null;
 let flashTimers = [];
 let onFlashOff = null;
 
@@ -26,6 +27,7 @@ export function vibrateSupported() {
 
 // Stop every output channel and clear all scheduled work. Safe to call anytime.
 export function stopAll() {
+  stopTone();
   if (activeOsc) {
     try { activeOsc.osc.stop(); } catch { /* already stopped */ }
     try { activeOsc.osc.disconnect(); } catch { /* noop */ }
@@ -39,6 +41,45 @@ export function stopAll() {
 }
 
 const RAMP = 0.005; // seconds — matches the WAV encoder's anti-click ramp
+
+/**
+ * Continuous sidetone for the tap keyer: on while the key is held. Same lazy
+ * AudioContext and anti-click ramp as playAudio. Returns false if unavailable.
+ */
+export function startTone(freq = 600, amplitude = 0.7) {
+  stopTone();
+  const Ctx = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+  if (!Ctx) return false;
+  if (!audioCtx) audioCtx = new Ctx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0, audioCtx.currentTime);
+  gain.gain.linearRampToValueAtTime(amplitude, audioCtx.currentTime + RAMP);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  toneOsc = { osc, gain };
+  return true;
+}
+
+export function stopTone() {
+  if (!toneOsc) return;
+  const { osc, gain } = toneOsc;
+  toneOsc = null;
+  try {
+    const t = audioCtx.currentTime;
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value, t);
+    gain.gain.linearRampToValueAtTime(0, t + RAMP);
+    osc.stop(t + RAMP + 0.01);
+  } catch { try { osc.stop(); } catch { /* already stopped */ } }
+  setTimeout(() => {
+    try { osc.disconnect(); gain.disconnect(); } catch { /* noop */ }
+  }, 50);
+}
 
 /**
  * Play the timeline as CW sidetone. Returns false if Web Audio is unavailable.

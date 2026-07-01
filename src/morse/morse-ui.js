@@ -130,12 +130,17 @@ flashBtn.addEventListener('click', () => {
   const tl = outputTimeline({ wpm: Math.min(wpm, FLASH_MAX_WPM), charWpm: Math.min(charWpm, FLASH_MAX_WPM) });
   if (!tl) return;
   player.flash(tl, { onToggle: setFlasher });
+  // flash() stops any running audio via stopAll(), which suppresses the
+  // oscillator's onEnd — reset the Play/Stop buttons here or Play stays disabled.
+  setPlaying(false);
 });
 
 vibrateBtn.addEventListener('click', () => {
   const tl = outputTimeline();
   if (!tl) return;
   player.vibrate(tl);
+  // Same as flash(): vibrate() stopAll()s audio without firing onEnd.
+  setPlaying(false);
 });
 
 copyBtn.addEventListener('click', async () => {

@@ -201,5 +201,13 @@ export function parseQrPayload(raw) {
     return { kind: 'url', fields: { url: trimmed }, raw: trimmed };
   }
 
+  // The URL spec strips embedded tab/newline before parsing, so "ht\tp://x"
+  // still navigates to http://x — classify it the way a browser would, or a
+  // crafted payload could pose as harmless plain text and skip the URL checks.
+  const descheme = trimmed.replace(/[\t\n\r]/g, '');
+  if (SCHEME_RE.test(descheme)) {
+    return { kind: 'url', fields: { url: descheme }, raw: trimmed };
+  }
+
   return { kind: 'text', fields: { text: s }, raw: s };
 }

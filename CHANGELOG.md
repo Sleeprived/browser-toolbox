@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-07-01 — v1.10.1 — Review fixes across five tools
+
+### Fixed
+- **Image Resizer:** loading a new image now clears the previous image's
+  result — before, the preview and Download button kept serving the *previous*
+  photo's output until Resize was clicked again.
+- **CSV ⇄ JSON Workbench:** a final row consisting of a single quoted empty
+  field (`""`) is no longer silently dropped by the parser, and a row with one
+  empty cell now survives a serialize → parse round trip (written as `""`
+  instead of a bare empty line).
+- **Morse Code Studio:** clicking Flash or Vibrate while audio was playing left
+  the Play button stuck disabled; both now reset the playback buttons.
+- **Morse Code Studio:** the on-screen tap pad can now be keyed with the
+  keyboard (Enter/Space while focused), matching how a button is expected to
+  behave — previously it only responded to mouse/touch.
+- **Password Vault:** the ~25s clipboard auto-clear now checks (where the
+  browser allows reading the clipboard) that the clipboard still holds the
+  copied entry before clearing, so it can no longer wipe something else you
+  copied in the meantime.
+
+### Changed
+- **QR reader link safety:** scheme checks are now an allowlist — anything that
+  is not plain `http(s)` gets a caution (app-launching schemes like `intent:`
+  or `market:` previously passed silently), and a URL disguised with embedded
+  tab/newline characters (which browsers strip before navigating) is now
+  classified as a link and flagged instead of being called plain text.
+- Service worker cache bumped to v22.
+
+## 2026-07-01 — v1.10.0 — Morse: tap-to-decode keyer
+
+### Added
+- **Morse Code Studio — "Tap it in."** Hear something that might be Morse? Tap
+  the rhythm and it is decoded to text live: short tap = dot, long tap = dash,
+  a brief pause ends the letter, a longer pause starts a new word.
+  - Works with the spacebar (rebindable to any key — captured only while
+    keyboard tapping is on; Esc stops it) or a large on-screen tap pad, so
+    phones and tablets work too.
+  - A tap-speed slider sets the starting pace and the keyer then adapts to
+    your actual rhythm (bounded, so one stray tap can't derail it), with a
+    live readout of your estimated speed.
+  - Optional sidetone beeps while the key is held (uses the Tone slider), so
+    you can compare your tapping against what you heard.
+  - Taps feed the normal decoder input, so Play, Copy, Download WAV, Flash,
+    and Vibrate all work on what you tapped. Undo removes the last letter.
+- Service worker bumped to v21 — precaches the two new Morse modules.
+
+## 2026-07-01 — barcode generator fixes
+
+### Changed
+- **Barcode Generator:** the quiet-zone slider minimum is raised from 4 to 8
+  modules so a barcode can't be given a margin too small to scan reliably
+  (default stays 10).
+
+### Fixed
+- **Barcode Generator:** removed a dead, unused assignment in the render path
+  (internal tidy-up, no behavior change).
+- **Tests:** added a full bit-pattern regression assertion for a known EAN-13
+  code so any future typo in the barcode digit tables is caught.
+- Human-readable text layout: the centered digit line under EAN-13/UPC-A codes
+  was reviewed and kept as-is for v1 (bars scan correctly; the classic
+  split/outset retail layout was deemed a cosmetic-only enhancement, deferred).
+
+## 2026-07-01 — v1.9.0 — Barcode Generator (tool #15)
+
+### Added
+- **Barcode Generator** — a new offline tool that turns text or numbers into
+  linear barcodes and renders them entirely in your browser:
+  - **Code 128** for arbitrary printable-ASCII text and numbers, with automatic
+    subset-C packing of digit pairs for a tighter code (up to 120 characters).
+  - **EAN-13** and **UPC-A** retail barcodes: enter the data digits and the check
+    digit is computed and appended, or paste the full code and its check digit is
+    verified (a mismatch is flagged and the correct one used).
+  - Live check-digit display and clear inline validation for digit-only formats.
+  - Appearance controls: bar and background colors (with a low-contrast
+    scannability warning), bar width, bar height, quiet-zone margin, and an
+    optional human-readable text line.
+  - Download as PNG or SVG, or copy the image to the clipboard.
+- Home page, service worker (v20), and app manifest updated to list fifteen tools.
+
 ## 2026-06-25 — v1.8.1 — stronger master-password gate + DoS guard fix
 
 ### Changed

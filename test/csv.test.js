@@ -58,6 +58,18 @@ describe('parseCsv', () => {
   it('throws on an unterminated quote', () => {
     expect(() => parseCsv('"abc')).toThrow(CsvError);
   });
+
+  it('keeps a final row that is a single quoted empty field', () => {
+    expect(parseCsv('""')).toEqual([['']]);
+    expect(parseCsv('a,b\n""')).toEqual([
+      ['a', 'b'],
+      [''],
+    ]);
+  });
+
+  it('does not invent a trailing row when a quoted field appeared earlier', () => {
+    expect(parseCsv('a\n"b"\n')).toEqual([['a'], ['b']]);
+  });
 });
 
 describe('serializeCsv', () => {
@@ -100,6 +112,10 @@ describe('round-trips', () => {
     const json = csvToJson(csv);
     const back = jsonToCsv(json);
     expect(parseCsv(back)).toEqual(nasty);
+  });
+
+  it('a final row with one empty cell survives rows -> CSV -> rows', () => {
+    expect(parseCsv(serializeCsv([['x'], ['']]))).toEqual([['x'], ['']]);
   });
 });
 

@@ -683,3 +683,101 @@ describe('qr reader UI (non-canvas wiring)', () => {
     expect(document.getElementById('read-results').children.length).toBe(0);
   });
 });
+
+describe('barcode UI (canvas draw guarded in jsdom)', () => {
+  it('renders a Code 128 result for the default input on load', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/barcode-ui.js');
+    expect(document.getElementById('result').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('encoded').textContent).toMatch(/Code 128/);
+    expect(document.getElementById('barcode-error').classList.contains('hidden')).toBe(true);
+  });
+
+  it('shows the computed check digit for a 12-digit EAN-13 input', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/barcode-ui.js');
+    document.getElementById('symbology').value = 'ean13';
+    document.getElementById('symbology').dispatchEvent(new window.Event('change'));
+    const data = document.getElementById('data');
+    data.value = '590123412345';
+    data.dispatchEvent(new window.Event('input'));
+    const status = document.getElementById('barcode-status');
+    expect(status.hidden).toBe(false);
+    expect(status.textContent).toMatch(/Check digit: 7/);
+    expect(document.getElementById('encoded').textContent).toContain('5901234123457');
+  });
+
+  it('flags a mismatched supplied check digit but still renders', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/barcode-ui.js');
+    document.getElementById('symbology').value = 'ean13';
+    document.getElementById('symbology').dispatchEvent(new window.Event('change'));
+    const data = document.getElementById('data');
+    data.value = '5901234123450'; // wrong check digit (should be 7)
+    data.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('barcode-status').textContent).toMatch(/doesn't match/);
+    expect(document.getElementById('result').classList.contains('hidden')).toBe(false);
+  });
+
+  it('shows an inline error for invalid EAN-13 input', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/barcode-ui.js');
+    document.getElementById('symbology').value = 'ean13';
+    document.getElementById('symbology').dispatchEvent(new window.Event('change'));
+    const data = document.getElementById('data');
+    data.value = '12345';
+    data.dispatchEvent(new window.Event('input'));
+    const err = document.getElementById('barcode-error');
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('result').classList.contains('hidden')).toBe(true);
+  });
+});
+
+describe('morse tap keyer UI', () => {
+  it('a pad tap commits a dot and the decoder shows E', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      vi.advanceTimersByTime(80);                    // short press = dot
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);                  // letter-gap flush timer
+      expect(document.getElementById('morse-in').value.trim()).toBe('.');
+      expect(document.getElementById('morse-out').textContent).toBe('E');
+      expect(document.getElementById('morse-dir').value).toBe('decode');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('undo removes the last committed token', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    await import('../src/morse/tap-ui.js');
+    const inEl = document.getElementById('morse-in');
+    inEl.value = '... --- ';
+    document.getElementById('tap-undo').dispatchEvent(new window.Event('click'));
+    expect(inEl.value).toBe('... ');
+  });
+
+  it('Enter on the focused pad keys a dot (keyboard activation)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'Enter' }));
+      vi.advanceTimersByTime(80);                    // short press = dot
+      pad.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'Enter' }));
+      vi.advanceTimersByTime(2000);                  // letter-gap flush timer
+      expect(document.getElementById('morse-in').value.trim()).toBe('.');
+      expect(document.getElementById('morse-out').textContent).toBe('E');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

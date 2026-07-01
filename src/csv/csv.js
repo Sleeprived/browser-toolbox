@@ -16,6 +16,9 @@ export function parseCsv(text, delimiter = ',') {
   let row = [];
   let field = '';
   let inQuotes = false;
+  // A quote opened in the CURRENT field: distinguishes a trailing `""` (a real,
+  // empty field that must be kept) from ending exactly on a row break.
+  let fieldQuoted = false;
   let i = 0;
   let sawAnyChar = false;
   const n = text.length;
@@ -42,22 +45,26 @@ export function parseCsv(text, delimiter = ',') {
 
     if (c === '"') {
       inQuotes = true;
+      fieldQuoted = true;
       i += 1;
     } else if (c === delimiter) {
       row.push(field);
       field = '';
+      fieldQuoted = false;
       i += 1;
     } else if (c === '\n') {
       row.push(field);
       rows.push(row);
       row = [];
       field = '';
+      fieldQuoted = false;
       i += 1;
     } else if (c === '\r') {
       row.push(field);
       rows.push(row);
       row = [];
       field = '';
+      fieldQuoted = false;
       i += text[i + 1] === '\n' ? 2 : 1;
     } else {
       field += c;
@@ -69,7 +76,8 @@ export function parseCsv(text, delimiter = ',') {
 
   // Flush the final field/row unless the text ended exactly on a row break
   // (in which case row is empty and field is empty and we add nothing extra).
-  if (field !== '' || row.length > 0) {
+  // A quoted-but-empty final field ("") still counts as a row.
+  if (field !== '' || row.length > 0 || fieldQuoted) {
     row.push(field);
     rows.push(row);
   } else if (!sawAnyChar) {
@@ -114,11 +122,14 @@ function quoteCell(value, delimiter) {
 export function serializeCsv(rows, delimiter = ',', { sanitizeFormulas = false } = {}) {
   if (!Array.isArray(rows)) throw new CsvError('Rows must be an array');
   return rows
-    .map((row) =>
-      row
+    .map((row) => {
+      const line = row
         .map((cell) => quoteCell(sanitizeFormulas ? sanitizeFormula(cell) : cell, delimiter))
-        .join(delimiter),
-    )
+        .join(delimiter);
+      // A lone empty cell must be written as "" — a bare empty line reads back
+      // as a row break, not a row, so the row would vanish on re-parse.
+      return line === '' && row.length > 0 ? '""' : line;
+    })
     .join('\n');
 }
 

@@ -64,6 +64,12 @@ function loadFile(file) {
     showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
     return;
   }
+  // A new file invalidates any previous output; without this reset the preview
+  // and Download button would keep serving the PREVIOUS image's result.
+  outBlob = null;
+  if (outUrl) { URL.revokeObjectURL(outUrl); outUrl = null; }
+  preview.removeAttribute('src');
+  downloadBtn.classList.add('hidden');
   const url = URL.createObjectURL(file);
   const img = new Image();
   img.onload = () => {

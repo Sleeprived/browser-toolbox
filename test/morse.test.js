@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { textToMorse, morseToText, CODE } from '../src/morse/morse.js';
 import { buildTimeline } from '../src/morse/timing.js';
 import { timelineToWav } from '../src/morse/wav.js';
+import { createKeyer } from '../src/morse/keyer.js';
+import * as player from '../src/morse/player.js';
 
 describe('textToMorse', () => {
   it('encodes letters with spaces and words with / ', () => {
@@ -155,6 +157,105 @@ describe('buildTimeline (Farnsworth)', () => {
     const segs = buildTimeline('. .', { wpm: 30, charWpm: 10 }).segments;
     const u = 1200 / 10;
     expect(segs[1].ms).toBeGreaterThanOrEqual(3 * u - 1e-6);
+  });
+});
+
+describe('createKeyer', () => {
+  // Helper: one press. Returns the classified symbol.
+  const tap = (k, t, dur) => { k.down(t); return k.up(t + dur).symbol; };
+
+  it('classifies a short press as dot and a long press as dash', () => {
+    const k = createKeyer({ wpm: 12 }); // base unit 100 ms, dash at >= 2u
+    expect(tap(k, 0, 80)).toBe('.');
+    expect(tap(k, 1000, 300)).toBe('-');
+  });
+
+  it('commits the pending letter when the next press starts after a letter gap', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 80);                       // '.', unit adapts to 94 ms
+    const r = k.down(400);               // gap 320 >= 2u (188) but < 5u (470)
+    expect(r).toEqual({ committed: '.', wordBreak: false });
+  });
+
+  it('adds a word break when the gap reaches 5 units', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 80);
+    const r = k.down(1000);              // gap 920 >= 5u
+    expect(r).toEqual({ committed: '.', wordBreak: true });
+  });
+
+  it('builds multi-symbol letters across short gaps', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 100); tap(k, 200, 100); tap(k, 400, 100); // '...' with 1u gaps
+    expect(k.pending()).toBe('...');
+    expect(k.down(800).committed).toBe('...');           // 3u gap -> letter ends
+  });
+
+  it('flush commits after the letter gap and is idempotent', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 80);
+    expect(k.flush(100)).toEqual({ committed: null });   // gap too small
+    expect(k.flush(400)).toEqual({ committed: '.' });
+    expect(k.flush(500)).toEqual({ committed: null });   // already committed
+    expect(k.down(450)).toEqual({ committed: null, wordBreak: false });
+  });
+
+  it('keys a full SOS with steady timing (dots 1u, dashes 3u, gaps 1u/3u)', () => {
+    const k = createKeyer({ wpm: 12 });
+    const out = [];
+    const apply = (r) => { if (r.wordBreak) out.push('/'); if (r.committed) out.push(r.committed); };
+    const press = (t, dur) => { apply(k.down(t)); k.up(t + dur); };
+    press(0, 100); press(200, 100); press(400, 100);      // S
+    press(800, 300); press(1200, 300); press(1600, 300);  // O (letter gap 300)
+    press(2200, 100); press(2400, 100); press(2600, 100); // S
+    apply(k.flush(3000));
+    expect(out).toEqual(['...', '---', '...']);
+    expect(morseToText(out.join(' '))).toBe('SOS');
+  });
+
+  it('adapts to a slower rhythm so borderline presses stay dots', () => {
+    const k = createKeyer({ wpm: 12 });                   // base 100
+    for (let i = 0; i < 5; i++) tap(k, i * 2000, 450);    // slow dashes drift the unit up
+    expect(k.unitMs()).toBeGreaterThan(120);
+    expect(tap(k, 20000, 260)).toBe('.');                 // would be a dash at base speed
+  });
+
+  it('clamps adaptation to 0.5x-2x of the slider base', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 5000);                                      // absurd press cannot run away
+    expect(k.unitMs()).toBe(200);
+    for (let i = 1; i <= 10; i++) tap(k, i * 10000, 10);  // absurdly short presses
+    expect(k.unitMs()).toBe(50);
+  });
+
+  it('setWpm resets the adapted unit to the new base', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 450);
+    k.setWpm(12);
+    expect(k.unitMs()).toBe(100);
+  });
+
+  it('finish commits pending unconditionally; a held press is discarded', () => {
+    const k = createKeyer({ wpm: 12 });
+    tap(k, 0, 80);
+    k.down(200);                                          // held at "blur"
+    expect(k.finish()).toEqual({ committed: '.' });
+    expect(k.pending()).toBe('');
+    expect(k.finish()).toEqual({ committed: null });
+  });
+
+  it('never signals boundaries before the first release', () => {
+    const k = createKeyer({ wpm: 12 });
+    expect(k.down(99999)).toEqual({ committed: null, wordBreak: false });
+    expect(k.up(99999 + 50).symbol).toBe('.');
+    expect(k.up(200000).symbol).toBe(null);               // up without down
+  });
+});
+
+describe('player tone (no Web Audio in test env)', () => {
+  it('startTone reports unsupported and stopTone/stopAll are safe to call', () => {
+    expect(player.startTone(600)).toBe(false);
+    expect(() => { player.stopTone(); player.stopAll(); }).not.toThrow();
   });
 });
 

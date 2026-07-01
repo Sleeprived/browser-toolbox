@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v19';
+const CACHE_VERSION = 'v22';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -68,6 +68,8 @@ const ASSETS = [
   'src/morse/wav.js',
   'src/morse/player.js',
   'src/morse/morse-ui.js',
+  'src/morse/keyer.js',
+  'src/morse/tap-ui.js',
   'cipher.html',
   'src/cipher/tapcode.js',
   'src/cipher/baconian.js',
@@ -81,6 +83,11 @@ const ASSETS = [
   'hash.html',
   'src/hash/hash.js',
   'src/hash/hash-ui.js',
+  'barcode.html',
+  'src/barcode/code128.js',
+  'src/barcode/ean.js',
+  'src/barcode/render.js',
+  'src/barcode/barcode-ui.js',
   'assets/img/icon-192.png',
   'assets/img/icon-512.png',
   'assets/img/icon-maskable-512.png',

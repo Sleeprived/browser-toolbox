@@ -150,6 +150,20 @@ describe('risk: URL heuristics', () => {
   it('cautions on a known link shortener', () => {
     expect(findText('https://bit.ly/abc123', /shorten|hidden/i).level).toBe('caution');
   });
+
+  it('cautions on an app-launching scheme (allowlist, not denylist)', () => {
+    expect(findText('intent://evil#Intent;scheme=http;package=com.bad.app;end', /scheme/i).level)
+      .toBe('caution');
+    expect(findText('market://details?id=com.bad.app', /scheme/i).level).toBe('caution');
+  });
+
+  it('classifies a URL with an embedded tab as a link and flags the hidden character', () => {
+    const p = parseQrPayload('ht\ttp://phish.example/login');
+    expect(p.kind).toBe('url');
+    const findings = analyzePayload(p);
+    expect(findings.some((f) => f.level === 'caution' && /hidden/i.test(f.message))).toBe(true);
+    expect(findings.some((f) => /not encrypted/i.test(f.message))).toBe(true); // plain-http check still ran
+  });
 });
 
 describe('risk: non-URL payloads', () => {

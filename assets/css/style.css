@@ -338,6 +338,17 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
   /* Belt-and-suspenders: never light up if reduced motion is requested. */
   .morse-flasher.on { background: var(--surface-2); border-color: var(--border); }
 }
+/* Tap pad: big touch target; suppress long-press/selection behaviors so a
+   held dash on mobile doesn't open a context menu or select text. */
+.tap-pad {
+  width: 100%;
+  min-height: 96px;
+  font-size: 1.05rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tap-pad.held { filter: brightness(1.35); }
 
 /* ---- Cipher Studio ---- */
 /* Glyphs draw in the page text color via stroke="currentColor"; the export SVG

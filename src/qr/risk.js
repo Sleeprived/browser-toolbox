@@ -44,6 +44,17 @@ function analyzeUrl(url) {
     return out;
   }
 
+  // Allowlist, not denylist: anything that is not plain web gets a caution, so
+  // app-launching schemes (intent:, market:, ms-word:, …) and schemes invented
+  // after this list was written are flagged by default.
+  if (scheme !== 'http' && scheme !== 'https') {
+    out.push({
+      level: 'caution',
+      message: `This uses the uncommon "${scheme}:" scheme, which may launch an app or trigger an action instead of opening a web page.`,
+    });
+    return out;
+  }
+
   if (u.username || u.password) {
     out.push({
       level: 'danger',
@@ -91,7 +102,18 @@ export function analyzePayload(parsed) {
   if (!parsed || typeof parsed !== 'object') return [];
   const { kind, fields = {} } = parsed;
 
-  if (kind === 'url') return analyzeUrl(fields.url || parsed.raw || '');
+  if (kind === 'url') {
+    const out = analyzeUrl(fields.url || parsed.raw || '');
+    // decode.js strips embedded tab/newline to classify the payload as a URL;
+    // when it had to, the characters were hiding the link's true shape.
+    if (fields.url && parsed.raw && parsed.raw !== fields.url) {
+      out.unshift({
+        level: 'caution',
+        message: 'This link contains hidden tab/newline characters — a trick used to make a link look like harmless text.',
+      });
+    }
+    return out;
+  }
 
   if (kind === 'wifi') {
     const out = [];
