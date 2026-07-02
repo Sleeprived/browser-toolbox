@@ -69,8 +69,10 @@ function renderTapView() {
 }
 
 function applyResult({ committed, wordBreak = false }) {
-  if (wordBreak) { append('/'); tapped.push('/'); }
+  // When both arrive together, the committed letter predates the word gap that
+  // follows it — the letter must land before the '/'.
   if (committed) { append(committed); tapped.push(committed); }
+  if (wordBreak) { append('/'); tapped.push('/'); }
   renderTapView();
 }
 

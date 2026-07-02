@@ -196,17 +196,15 @@ export function parseQrPayload(raw) {
   if (lower.startsWith('geo:')) return parseGeo(trimmed);
 
   // Any remaining explicit scheme (http, https, ftp, javascript, data, file, ...)
-  // is treated as a URL so risk.js can inspect the scheme.
-  if (SCHEME_RE.test(trimmed)) {
-    return { kind: 'url', fields: { url: trimmed }, raw: trimmed };
-  }
-
-  // The URL spec strips embedded tab/newline before parsing, so "ht\tp://x"
-  // still navigates to http://x — classify it the way a browser would, or a
-  // crafted payload could pose as harmless plain text and skip the URL checks.
-  const descheme = trimmed.replace(/[\t\n\r]/g, '');
-  if (SCHEME_RE.test(descheme)) {
-    return { kind: 'url', fields: { url: descheme }, raw: trimmed };
+  // is treated as a URL so risk.js can inspect the scheme. The URL spec strips
+  // embedded tab/newline before parsing, so "ht\tp://x" still navigates to
+  // http://x and "https://good.com\t.evil.com" really goes to good.com.evil.com
+  // — strip them UNCONDITIONALLY (not only when the scheme itself is broken),
+  // or an intact-scheme payload could disguise its true host and skip the
+  // hidden-character caution in risk.js, which fires on raw !== fields.url.
+  const stripped = trimmed.replace(/[\t\n\r]/g, '');
+  if (SCHEME_RE.test(stripped)) {
+    return { kind: 'url', fields: { url: stripped }, raw: trimmed };
   }
 
   return { kind: 'text', fields: { text: s }, raw: s };

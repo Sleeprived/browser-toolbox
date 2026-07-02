@@ -71,6 +71,14 @@
         <span id="mic-indicator" class="lead mic-indicator hidden">&#9679; listening</span>
       </div>
       <p id="mic-error" class="msg error hidden" role="alert"></p>
+      <div class="row">
+        <div>
+          <!-- Max 30, not the Play card's 40: above ~30 WPM a dot (≤30 ms) falls
+               under the mic tracker's 25 ms noise debounce and cannot be captured. -->
+          <label for="mic-wpm">Expected speed: <span id="mic-wpm-val">20</span> WPM</label>
+          <input type="range" id="mic-wpm" min="5" max="30" step="1" value="20" />
+        </div>
+      </div>
       <p class="lead">Heard: <span id="mic-morse" class="mono" aria-live="polite"></span></p>
       <pre class="out" id="mic-out" aria-live="polite"></pre>
     </div>

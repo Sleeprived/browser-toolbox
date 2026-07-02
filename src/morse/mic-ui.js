@@ -22,6 +22,10 @@ const indicator = $('mic-indicator');
 const errorEl = $('mic-error');
 const morseEl = $('mic-morse');
 const outEl = $('mic-out');
+// Optional-element guards: a stale cached page (SW stale-while-revalidate) may
+// predate the speed slider; listening must keep working without it.
+const wpmEl = $('mic-wpm');
+const wpmVal = $('mic-wpm-val');
 
 let stream = null;
 let audioCtx = null;
@@ -43,8 +47,10 @@ function renderTranscript() {
 }
 
 function commit({ committed, wordBreak = false }) {
-  if (wordBreak) heardMorse += '/ ';
+  // When both arrive together, the committed letter predates the word gap that
+  // follows it — the letter must land before the '/'.
   if (committed) heardMorse += `${committed} `;
+  if (wordBreak) heardMorse += '/ ';
   if (committed || wordBreak) renderTranscript();
 }
 
@@ -124,7 +130,11 @@ async function startListening() {
   const freqData = new Uint8Array(analyser.frequencyBinCount);
   const binHz = audioCtx.sampleRate / analyser.fftSize;
   tracker = createToneTracker();
-  keyer = createKeyer({ wpm: 20 }); // player default; adapts to the real rhythm
+  // The keyer adapts only 0.5x-2x around its base, and a lone tone is ambiguous
+  // (a 5 WPM dot lasts exactly as long as a 15 WPM dash) — so the base must
+  // come from the user, like the tap card's slider, not a hard-coded 20 WPM
+  // that can never classify slow Morse.
+  keyer = createKeyer({ wpm: wpmEl ? Number(wpmEl.value) : 20 });
   heardMorse = '';
   renderTranscript();
   setListening(true);
@@ -147,6 +157,11 @@ async function startListening() {
 
 startBtn.addEventListener('click', startListening);
 stopBtn.addEventListener('click', stopListening);
+
+wpmEl?.addEventListener('input', () => {
+  if (wpmVal) wpmVal.textContent = wpmEl.value;
+  if (keyer) keyer.setWpm(Number(wpmEl.value)); // retune a live session too
+});
 
 // Never keep the mic open in a hidden or closing tab.
 window.addEventListener('pagehide', stopListening);

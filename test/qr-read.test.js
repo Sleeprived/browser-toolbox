@@ -180,6 +180,18 @@ describe('risk: URL heuristics', () => {
     expect(findings.some((f) => f.level === 'caution' && /hidden/i.test(f.message))).toBe(true);
     expect(findings.some((f) => /not encrypted/i.test(f.message))).toBe(true); // plain-http check still ran
   });
+
+  it('flags a hidden tab INSIDE a URL whose scheme is intact (host-disguise trick)', () => {
+    // Browsers strip interior tab/newline before parsing, so this really opens
+    // paypal.com.evil.com. With the scheme intact the old code stored the URL
+    // verbatim and NO finding fired — the card showed a paypal-looking link
+    // with a clean bill of health.
+    const p = parseQrPayload('https://paypal.com\t.evil.com/login');
+    expect(p.kind).toBe('url');
+    expect(p.fields.url).toBe('https://paypal.com.evil.com/login'); // what it really opens
+    const findings = analyzePayload(p);
+    expect(findings.some((f) => f.level === 'caution' && /hidden/i.test(f.message))).toBe(true);
+  });
 });
 
 describe('risk: non-URL payloads', () => {

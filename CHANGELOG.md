@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-07-02 — v1.11.3
+
+### Added
+- **Morse Code Studio:** the microphone card has an "Expected speed" slider
+  (5–30 WPM, like the tap card's). The decoder adapts around the chosen speed;
+  a single tone is inherently ambiguous (a 5 WPM dot lasts exactly as long as
+  a 15 WPM dash), so the old fixed 20 WPM base could never classify slow
+  Morse — including this page's own Play button below ~11 WPM.
+
+### Fixed
+- **Password Vault:** creating a vault now clears both master-password inputs
+  immediately after the key is derived, matching the unlock path — the typed
+  master password no longer sits in two hidden DOM fields for the whole
+  unlocked session.
+- **QR Reader (link safety):** tab/newline characters hidden INSIDE a link
+  whose scheme is intact are now stripped and flagged. Browsers remove them
+  before parsing, so `https://paypal.com<TAB>.evil.com` really opens
+  `paypal.com.evil.com` — previously such a link was linked verbatim and drew
+  zero findings.
+- **Morse Code Studio:** when a committed letter and a word break arrive
+  together (reachable by moving the WPM slider mid-gap), the letter now lands
+  before the `/` instead of being pushed into the next word — in the input,
+  the tap mirror, and the mic transcript.
+- **Cipher Studio:** SVG/PNG export now refuses messages over the 2,000-glyph
+  cap (the same cap as the live render) instead of synchronously serializing
+  one SVG group per glyph — a huge paste could previously freeze the tab from
+  the Download buttons.
+- **PWA:** the service worker's background cache refresh is now passed to
+  `event.waitUntil`, so the browser can no longer stop the idle worker before
+  the refresh is written — stale-while-revalidate self-healing is reliable.
+- **CI:** the workflow token is now read-only (`permissions: contents: read`).
+
 ## 2026-07-02 — v1.11.2
 
 ### Added

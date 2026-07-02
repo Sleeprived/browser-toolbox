@@ -203,7 +203,8 @@ describe('createKeyer', () => {
   it('keys a full SOS with steady timing (dots 1u, dashes 3u, gaps 1u/3u)', () => {
     const k = createKeyer({ wpm: 12 });
     const out = [];
-    const apply = (r) => { if (r.wordBreak) out.push('/'); if (r.committed) out.push(r.committed); };
+    // Committed letter first: it predates the word gap reported alongside it.
+    const apply = (r) => { if (r.committed) out.push(r.committed); if (r.wordBreak) out.push('/'); };
     const press = (t, dur) => { apply(k.down(t)); k.up(t + dur); };
     press(0, 100); press(200, 100); press(400, 100);      // S
     press(800, 300); press(1200, 300); press(1600, 300);  // O (letter gap 300)

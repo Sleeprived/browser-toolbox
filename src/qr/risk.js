@@ -111,12 +111,13 @@ export function analyzePayload(parsed) {
 
   if (kind === 'url') {
     const out = analyzeUrl(fields.url || parsed.raw || '');
-    // decode.js strips embedded tab/newline to classify the payload as a URL;
-    // when it had to, the characters were hiding the link's true shape.
+    // decode.js strips embedded tab/newline from the URL it stores; when the
+    // raw payload differs, the characters were hiding the link's true shape —
+    // either disguising a URL as plain text or masking its real host.
     if (fields.url && parsed.raw && parsed.raw !== fields.url) {
       out.unshift({
         level: 'caution',
-        message: 'This link contains hidden tab/newline characters — a trick used to make a link look like harmless text.',
+        message: 'This link contains hidden tab/newline characters — a trick used to disguise what a link is or where it really points.',
       });
     }
     return out;

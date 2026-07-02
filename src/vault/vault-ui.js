@@ -336,6 +336,11 @@ async function doCreate() {
   try {
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const key = await deriveKey(pw, salt, DEFAULT_ITERATIONS);
+    // Drop the typed master password from the DOM inputs as soon as it has
+    // served its purpose — same hygiene as the unlock path above; without this
+    // it sits in two hidden fields for the whole unlocked session.
+    $('new-master').value = '';
+    $('new-master-confirm').value = '';
     state.entries = [];
     state.key = key;
     state.salt = salt;

@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v25';
+const CACHE_VERSION = 'v26';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -157,14 +157,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(req, { ignoreSearch: true }).then((cached) => {
         const network = fetch(req)
-          .then((resp) => {
+          .then(async (resp) => {
             if (resp && resp.ok && resp.type === 'basic') {
               const clone = resp.clone();
               // Store under the search-stripped URL: matching ignores the
               // query, so per-query duplicate entries would pile up unread.
               const bare = new URL(req.url);
               bare.search = '';
-              caches.open(CACHE_NAME).then((cache) => cache.put(bare.href, clone)).catch(() => {});
+              await caches.open(CACHE_NAME).then((cache) => cache.put(bare.href, clone)).catch(() => {});
             }
             return resp;
           })
@@ -172,6 +172,11 @@ self.addEventListener('fetch', (event) => {
             const indexUrl = new URL('index.html', self.registration.scope).href;
             return cached || (await caches.match(indexUrl)) || Response.error();
           });
+        // When the cached copy is served, nothing awaits the refresh — without
+        // waitUntil the browser may stop the idle worker before the fetch and
+        // cache.put land, and the background revalidation silently never
+        // happens. (The put is awaited inside `network` so this covers it.)
+        event.waitUntil(network.then(() => undefined, () => undefined));
         return cached || network;
       }),
     );
@@ -187,14 +192,16 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
-        .then((resp) => {
+        .then(async (resp) => {
           if (resp && resp.ok && resp.type === 'basic') {
             const clone = resp.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
+            await caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
           }
           return resp;
         })
         .catch(() => cached || Response.error());
+      // Same worker-lifetime guarantee as the navigation branch above.
+      event.waitUntil(network.then(() => undefined, () => undefined));
       return cached || network;
     }),
   );

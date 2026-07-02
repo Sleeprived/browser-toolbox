@@ -238,6 +238,31 @@ describe('vault UI', () => {
     expect(label).not.toContain('Very strong'); // must not claim the top tier the gate refused
   });
 
+  it('clears both master-password inputs once the vault is created', async () => {
+    // The unlock path scrubs the typed master password from the DOM right after
+    // use; the create path must do the same or it sits in two hidden inputs for
+    // the whole unlocked session.
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    document.getElementById('create-new').dispatchEvent(new window.Event('click'));
+
+    const pw = document.getElementById('new-master');
+    const confirm = document.getElementById('new-master-confirm');
+    pw.value = 'vault-master-correct-horse-staple-9!';
+    pw.dispatchEvent(new window.Event('input'));
+    confirm.value = 'vault-master-correct-horse-staple-9!';
+    confirm.dispatchEvent(new window.Event('input'));
+    document.getElementById('create-confirm').dispatchEvent(new window.Event('click'));
+
+    const app = document.getElementById('vault-app');
+    for (let i = 0; i < 400 && app.classList.contains('hidden'); i++) {
+      await new Promise((r) => setTimeout(r, 10)); // real PBKDF2 derivation
+    }
+    expect(app.classList.contains('hidden')).toBe(false);
+    expect(pw.value).toBe('');
+    expect(confirm.value).toBe('');
+  });
+
   it('cancelling the create form returns to the locked screen', async () => {
     loadBody('vault.html');
     await import('../src/vault/vault-ui.js');
@@ -572,6 +597,33 @@ describe('cipher UI', () => {
     }
   });
 
+  it('refuses to export past the glyph cap instead of freezing the tab', async () => {
+    // The live render slices to MAX_VISUAL_GLYPHS, but the download path
+    // re-splits the raw input — uncapped, a 1 MB paste serialized one SVG
+    // group per glyph synchronously. Export must refuse, not truncate.
+    loadBody('cipher.html');
+    await import('../src/cipher/cipher-ui.js');
+    document.getElementById('cipher-format').value = 'pigpen';
+    document.getElementById('cipher-format').dispatchEvent(new window.Event('change'));
+    // Set the value WITHOUT an input event: the download path reads it directly,
+    // and skipping the live render keeps the test fast.
+    document.getElementById('cipher-in').value = 'A'.repeat(2001);
+
+    const created = [];
+    const origCreate = global.URL.createObjectURL;
+    const origClick = window.HTMLAnchorElement.prototype.click;
+    global.URL.createObjectURL = (b) => { created.push(b); return 'blob:fake'; };
+    window.HTMLAnchorElement.prototype.click = () => {};
+    try {
+      document.getElementById('cipher-download-svg').dispatchEvent(new window.Event('click'));
+      expect(created.length).toBe(0); // no blob, no download
+      expect(document.getElementById('cipher-status').textContent).toMatch(/too long to export/i);
+    } finally {
+      global.URL.createObjectURL = origCreate;
+      window.HTMLAnchorElement.prototype.click = origClick;
+    }
+  });
+
   it('builds text by clicking the decode palette (pigpen decode)', async () => {
     loadBody('cipher.html');
     await import('../src/cipher/cipher-ui.js');
@@ -780,6 +832,25 @@ describe('morse mic UI (no mediaDevices in jsdom)', () => {
     const err = document.getElementById('mic-error');
     expect(err.classList.contains('hidden')).toBe(false);
     expect(err.textContent).toMatch(/not supported/i);
+  });
+
+  it('the expected-speed slider updates its readout', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/mic-ui.js');
+    const wpm = document.getElementById('mic-wpm');
+    wpm.value = '8';
+    wpm.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('mic-wpm-val').textContent).toBe('8');
+  });
+
+  it('still loads and starts when the speed slider is missing (stale cached HTML)', async () => {
+    loadBody('morse.html');
+    document.getElementById('mic-wpm').remove();
+    document.getElementById('mic-wpm-val').remove();
+    await import('../src/morse/mic-ui.js');
+    document.getElementById('mic-start').dispatchEvent(new window.Event('click'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(document.getElementById('mic-error').classList.contains('hidden')).toBe(false);
   });
 });
 
@@ -999,6 +1070,40 @@ describe('morse tap keyer UI', () => {
       vi.advanceTimersByTime(2000);                  // letter-gap flush timer
       expect(document.getElementById('morse-in').value.trim()).toBe('.');
       expect(document.getElementById('morse-out').textContent).toBe('E');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a committed letter BEFORE the word break it precedes (slider-defeated flush)', async () => {
+    // Changing the WPM slider resets the keyer unit without rescheduling the
+    // pending flush timer, so the timer can fire too early to commit; the next
+    // tap then reports the old letter and the word gap TOGETHER — and the
+    // letter must land before the '/', not inside the new word.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const pad = document.getElementById('tap-pad');
+      const inEl = document.getElementById('morse-in');
+
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      vi.advanceTimersByTime(80);                      // dot; flush timer ~228 ms out
+      pad.dispatchEvent(new window.Event('pointerup'));
+
+      const wpm = document.getElementById('tap-wpm');  // slow the keyer mid-gap
+      wpm.value = '5';                                 // unit resets to 240 ms
+      wpm.dispatchEvent(new window.Event('input'));
+      vi.advanceTimersByTime(1300);                    // flush fires but gap < 2u — commits nothing
+
+      pad.dispatchEvent(new window.Event('pointerdown')); // gap ≥ 5u: dot + word break arrive together
+      vi.advanceTimersByTime(80);
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);                    // flush the second dot
+
+      expect(inEl.value.trim()).toBe('. / .');         // was '/ . .' before the fix
+      expect(document.getElementById('tap-morse').textContent.trim()).toBe('. / .');
     } finally {
       vi.useRealTimers();
     }

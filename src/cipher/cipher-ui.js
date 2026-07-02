@@ -217,20 +217,28 @@ function currentLetters() {
 
 function exportSvgNode() {
   const letters = currentLetters();
-  if (!letters) return null;
+  if (!letters) { setStatus('Nothing to download yet — type a message first.'); return null; }
+  // Same guard as the live render: building and serializing one SVG group per
+  // glyph is synchronous, so an uncapped export would freeze the tab on a huge
+  // paste (and the PNG path would allocate a proportionally huge canvas).
+  // Refuse rather than silently truncate a downloaded file.
+  if (letters.length > MAX_VISUAL_GLYPHS) {
+    setStatus(`Message too long to export — the limit is ${MAX_VISUAL_GLYPHS} glyphs.`);
+    return null;
+  }
   return exportStripSvg(formatSel.value, letters);
 }
 
 function downloadSvg() {
   const svg = exportSvgNode();
-  if (!svg) { setStatus('Nothing to download yet — type a message first.'); return; }
+  if (!svg) return;
   const xml = new XMLSerializer().serializeToString(svg);
   downloadBlob(new Blob([xml], { type: 'image/svg+xml' }), 'cipher.svg');
 }
 
 function downloadPng() {
   const svg = exportSvgNode();
-  if (!svg) { setStatus('Nothing to download yet — type a message first.'); return; }
+  if (!svg) return;
   const xml = new XMLSerializer().serializeToString(svg);
   const w = Number(svg.getAttribute('width'));
   const h = Number(svg.getAttribute('height'));

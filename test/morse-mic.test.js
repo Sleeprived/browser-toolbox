@@ -78,7 +78,7 @@ describe('createToneTracker (debounced edges)', () => {
 // simulated as tone-state frames → tracker → keyer → decoded text. This is the
 // jsdom-testable core of the acceptance criterion; only the acoustic capture
 // itself needs the manual speaker test.
-function simulateListening(text, { wpm = 20, frameMs = 10 } = {}) {
+function simulateListening(text, { wpm = 20, keyerWpm = wpm, frameMs = 10 } = {}) {
   const { code } = textToMorse(text);
   const tl = buildTimeline(code, { wpm });
   const spans = [];
@@ -93,7 +93,7 @@ function simulateListening(text, { wpm = 20, frameMs = 10 } = {}) {
   };
 
   const tracker = createToneTracker();
-  const keyer = createKeyer({ wpm: 20 });
+  const keyer = createKeyer({ wpm: keyerWpm }); // keyerWpm mirrors the mic card's speed slider
   let heard = '';
   const commit = ({ committed, wordBreak = false }) => {
     if (wordBreak) heard += '/ ';
@@ -120,6 +120,23 @@ describe('mic pipeline end-to-end (timeline frames → tracker → keyer → tex
   it('decodes SOS with digits and punctuation-free text at other speeds', () => {
     expect(simulateListening('SOS 911', { wpm: 15 }).decoded).toBe('SOS 911');
     expect(simulateListening('CQ CQ DE N0CALL', { wpm: 25 }).decoded).toBe('CQ CQ DE N0CALL');
+  });
+
+  it('tolerates a slider set near, but not exactly at, the signal speed', () => {
+    // Preserves the old hard-coded-20 coverage: adaptation (0.5x-2x of base)
+    // must absorb a 15/25 WPM signal against a 20 WPM slider setting.
+    expect(simulateListening('SOS 911', { wpm: 15, keyerWpm: 20 }).decoded).toBe('SOS 911');
+    expect(simulateListening('CQ CQ DE N0CALL', { wpm: 25, keyerWpm: 20 }).decoded).toBe('CQ CQ DE N0CALL');
+  });
+
+  it('decodes slow Morse when the slider matches (the old fixed 20 WPM base could not)', () => {
+    // 5 WPM: a dot lasts 240 ms — with a fixed 20 WPM base the dot threshold
+    // capped at exactly 240 ms, so classifying a dot was impossible.
+    expect(simulateListening('HELLO WORLD', { wpm: 5 }).decoded).toBe('HELLO WORLD');
+    expect(simulateListening('SOS', { wpm: 10 }).decoded).toBe('SOS');
+    // Fast end: 30 WPM (40 ms dots). Beyond that the TRACKER's 25 ms noise
+    // debounce starts eating dots — a capture constraint, not the keyer.
+    expect(simulateListening('TEST', { wpm: 30 }).decoded).toBe('TEST');
   });
 
   it('produces clean Morse tokens, not fragments', () => {
