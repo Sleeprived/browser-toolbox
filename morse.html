@@ -56,6 +56,19 @@
       <p class="lead">The keyboard key is captured only while keyboard tapping is on &mdash; press Esc to stop. The pad above always works.</p>
     </div>
 
+    <div class="card">
+      <h2>Listen with the microphone</h2>
+      <p class="lead">Hear Morse beeps near you &mdash; even this page's own Play button through the speakers? Let the page listen and decode them live. Audio is analyzed in memory only: never recorded, stored, or sent anywhere, and the microphone is released the moment you stop.</p>
+      <div class="btn-row">
+        <button class="btn" type="button" id="mic-start">Start listening</button>
+        <button class="btn secondary" type="button" id="mic-stop" disabled>Stop</button>
+        <span id="mic-indicator" class="lead mic-indicator hidden">&#9679; listening</span>
+      </div>
+      <p id="mic-error" class="msg error hidden" role="alert"></p>
+      <p class="lead">Heard: <span id="mic-morse" class="mono" aria-live="polite"></span></p>
+      <pre class="out" id="mic-out" aria-live="polite"></pre>
+    </div>
+
     <div id="morse-error" class="msg error hidden" role="alert"></div>
 
     <div class="card">
@@ -91,6 +104,7 @@
         <button class="btn secondary" type="button" id="morse-flash">Flash</button>
         <button class="btn secondary" type="button" id="morse-vibrate">Vibrate</button>
       </div>
+      <progress id="morse-progress" class="morse-progress" max="100" value="0" hidden aria-label="Playback progress"></progress>
       <p class="lead" id="morse-flash-note"><strong>Flash</strong> blinks the box below in time with the code. <strong>Photosensitivity caution:</strong> the strobe rate is capped below the seizure-risk threshold (kept slow but readable), and it is disabled automatically if your system requests reduced motion.</p>
       <div id="morse-flasher" class="morse-flasher" aria-hidden="true"></div>
     </div>
@@ -106,5 +120,6 @@
   <script type="module" src="src/shared/page.js"></script>
   <script type="module" src="src/morse/morse-ui.js"></script>
   <script type="module" src="src/morse/tap-ui.js"></script>
+  <script type="module" src="src/morse/mic-ui.js"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
-  <meta name="description" content="Fifteen private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, a local encrypted password vault, CSV/JSON, color palettes, cron, encode/decode (incl. Binary), JWT decoder, image resizer, Morse code, a cipher studio (Tap Code, Baconian, Pigpen, Semaphore), a TOTP/2FA generator, a hash & checksum verifier, and a barcode generator (Code 128, EAN-13, UPC-A). Everything runs in your browser." />
+  <meta name="description" content="Nineteen private, no-upload browser tools: QR codes, EXIF cleaner, passphrases, a local encrypted password vault, CSV/JSON, color palettes, cron, encode/decode (incl. Binary), JWT decoder, image resizer, Morse code, a cipher studio, a TOTP/2FA generator, a hash & checksum verifier, a barcode generator & reader, a text diff, a regex tester, timestamp & UUID tools, and a contrast checker. Everything runs in your browser." />
   <meta name="theme-color" content="#15171c" />
   <title>Browser Toolbox</title>
   <link rel="manifest" href="manifest.webmanifest" />
@@ -25,12 +25,16 @@
     </noscript>
 
     <h1>Browser Toolbox</h1>
-    <p class="lead">Fifteen handy tools that run entirely in your browser.</p>
+    <p class="lead">Nineteen handy tools that run entirely in your browser.</p>
 
     <div class="privacy-note">
       <span aria-hidden="true">&#128274;</span>
       <span><strong>100% private.</strong> Nothing you type or drop here is ever uploaded. No account, no tracking, works offline once loaded.</span>
     </div>
+
+    <label class="visually-hidden" for="tool-search">Find a tool</label>
+    <input type="search" id="tool-search" class="tool-search" placeholder="Find a tool&hellip; (name or what it does)" autocomplete="off" spellcheck="false" />
+    <p id="no-tools" class="lead hidden" role="status">No tools match that search.</p>
 
     <div class="tool-grid">
       <a class="tool-card" href="qr.html">
@@ -91,7 +95,23 @@
       </a>
       <a class="tool-card" href="barcode.html">
         <div class="t">Barcode Generator</div>
-        <div class="d">Make Code 128, EAN-13, and UPC-A barcodes. Download PNG or SVG, or copy the image.</div>
+        <div class="d">Make Code 128, EAN-13, and UPC-A barcodes &mdash; or read one back from an image. PNG, SVG, copy.</div>
+      </a>
+      <a class="tool-card" href="diff.html">
+        <div class="t">Text Diff</div>
+        <div class="d">Compare two texts line by line, inline or side by side, with changed words highlighted.</div>
+      </a>
+      <a class="tool-card" href="regex.html">
+        <div class="t">Regex Tester</div>
+        <div class="d">Try JavaScript regular expressions with live match highlighting, groups, and flags.</div>
+      </a>
+      <a class="tool-card" href="timestamp.html">
+        <div class="t">Timestamp &amp; UUID</div>
+        <div class="d">Convert Unix timestamps to readable dates and back; generate and inspect UUIDs.</div>
+      </a>
+      <a class="tool-card" href="contrast.html">
+        <div class="t">Contrast Checker</div>
+        <div class="d">Check two colors against WCAG AA / AAA contrast thresholds, with a live preview.</div>
       </a>
     </div>
   </main>
@@ -101,5 +121,6 @@
   </footer>
 
   <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/shared/index-search.js"></script>
 </body>
 </html>

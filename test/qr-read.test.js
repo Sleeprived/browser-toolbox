@@ -12,7 +12,7 @@ import {
   formatText,
 } from '../src/qr/payloads.js';
 import { parseQrPayload } from '../src/qr/decode.js';
-import { analyzePayload } from '../src/qr/risk.js';
+import { analyzePayload, isIpv4 } from '../src/qr/risk.js';
 
 // Convenience: classify a level set for a decoded raw string.
 const levels = (raw) => analyzePayload(parseQrPayload(raw)).map((f) => f.level);
@@ -145,6 +145,22 @@ describe('risk: URL heuristics', () => {
 
   it('cautions on a raw IP host', () => {
     expect(findText('http://192.168.1.1/admin', /IP address|192\.168/i).level).toBe('caution');
+  });
+
+  it('catches decimal and hex single-number IPv4 hosts (isIpv4 bypass fix)', () => {
+    // Browsers accept a single 32-bit number as an IPv4 host; these must trip the
+    // straight-to-IP caution even when the URL parser leaves them un-normalized.
+    expect(isIpv4('2130706433')).toBe(true);   // decimal 127.0.0.1
+    expect(isIpv4('0x7f000001')).toBe(true);   // hex 127.0.0.1
+    expect(isIpv4('0X7F000001')).toBe(true);   // case-insensitive hex
+    expect(isIpv4('4294967295')).toBe(true);   // max 32-bit value
+    expect(isIpv4('4294967296')).toBe(false);  // over 32 bits — not an IP
+    expect(isIpv4('example.com')).toBe(false);
+    expect(isIpv4('0xzz')).toBe(false);
+    expect(isIpv4('192.168.1.1')).toBe(true);  // dotted quad still works
+    expect(isIpv4('192.168.1.999')).toBe(false);
+    // End-to-end: the URL analyzer flags the decimal form as an IP link.
+    expect(findText('http://2130706433/', /IP address/i).level).toBe('caution');
   });
 
   it('cautions on a known link shortener', () => {

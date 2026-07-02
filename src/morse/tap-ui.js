@@ -39,7 +39,7 @@ function syncButtons() {
   listenBtn.textContent = listening ? 'Stop keyboard tapping (Esc)' : 'Start keyboard tapping';
   listenBtn.setAttribute('aria-pressed', String(listening));
   keyBtn.textContent = rebinding
-    ? 'Press a key… (Esc cancels)'
+    ? 'Press a key… (Esc or click here cancels)'
     : `Change key (now: ${keyLabel(keyCode)})`;
 }
 
@@ -104,8 +104,13 @@ function stopListening() {
   syncButtons();
 }
 
+// Keys that must never become the tap key: Tab (keyboard navigation) and bare
+// modifiers (held as part of ordinary shortcuts).
+const UNBINDABLE = /^(Tab|ShiftLeft|ShiftRight|ControlLeft|ControlRight|AltLeft|AltRight|MetaLeft|MetaRight)$/;
+
 document.addEventListener('keydown', (e) => {
   if (rebinding) {
+    if (e.code && UNBINDABLE.test(e.code)) return; // ignored — rebind stays armed
     e.preventDefault();
     e.stopPropagation();
     if (e.code && e.code !== 'Escape') keyCode = e.code;
@@ -134,8 +139,10 @@ listenBtn.addEventListener('click', () => {
   syncButtons();
 });
 
+// Toggle: clicking again is the visible cancel path — without it, an armed
+// rebind waits forever and swallows the next keystroke anywhere on the page.
 keyBtn.addEventListener('click', () => {
-  rebinding = true;
+  rebinding = !rebinding;
   syncButtons();
 });
 

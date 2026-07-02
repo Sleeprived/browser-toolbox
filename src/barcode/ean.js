@@ -6,21 +6,23 @@ import { BarcodeError } from './code128.js';
 
 // 7-module digit patterns as bit strings (1 = bar). L = left-odd, G = left-even,
 // R = right. G is the reverse of R; R is the bitwise complement of L.
-const L = [
+// Exported so the decoder can reverse the same tables.
+export const L = [
   '0001101', '0011001', '0010011', '0111101', '0100011',
   '0110001', '0101111', '0111011', '0110111', '0001011',
 ];
-const G = [
+export const G = [
   '0100111', '0110011', '0011011', '0100001', '0011101',
   '0111001', '0000101', '0010001', '0001001', '0010111',
 ];
-const R = [
+export const R = [
   '1110010', '1100110', '1101100', '1000010', '1011100',
   '1001110', '1010000', '1000100', '1001000', '1110100',
 ];
 
 // Which left-hand digits use L vs G, indexed by the EAN-13 first digit.
-const PARITY = [
+// Exported so the decoder can recover the implied first digit.
+export const PARITY = [
   'LLLLLL', 'LLGLGG', 'LLGGLG', 'LLGGGL', 'LGLLGG',
   'LGGLLG', 'LGGGLL', 'LGLGLG', 'LGLGGL', 'LGGLGL',
 ];

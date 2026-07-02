@@ -23,6 +23,7 @@ const preview = document.getElementById('img-preview');
 let srcBitmap = null; // { img, width, height, orientation, type, size }
 let outBlob = null;
 let outUrl = null;
+let loadGen = 0; // bumped per load; stale async onload/onerror results are dropped
 
 function showError(msg) {
   errorBox.textContent = msg;
@@ -56,6 +57,12 @@ function clampToCanvasLimits(w, h) {
 }
 
 function loadFile(file) {
+  // Bump BEFORE validation: a rejected file must also supersede in-flight
+  // work (loads AND pending toBlob encodes), or an older result finishing late
+  // would overwrite the rejection error. The guard also stops a slow decode
+  // finishing after a newer file was chosen from overwriting the newer file's
+  // dimensions, stats, and srcBitmap (last-write-wins race).
+  const gen = ++loadGen;
   if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
     showError('Please choose a JPEG, PNG, or WebP image.');
     return;
@@ -74,6 +81,7 @@ function loadFile(file) {
   const img = new Image();
   img.onload = () => {
     URL.revokeObjectURL(url);
+    if (gen !== loadGen) return; // superseded by a newer file
     // Bound decode-bomb memory: a small file can decode to an enormous bitmap.
     if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
       showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
@@ -97,7 +105,7 @@ function loadFile(file) {
     }
     stats.textContent = `Original: ${dispW}×${dispH}, ${(file.size / 1024).toFixed(0)} KB`;
   };
-  img.onerror = () => { URL.revokeObjectURL(url); showError('Could not load that image.'); };
+  img.onerror = () => { URL.revokeObjectURL(url); if (gen === loadGen) showError('Could not load that image.'); };
   img.src = url;
 }
 
@@ -146,7 +154,11 @@ function render() {
   ctx.restore();
 
   const quality = Number(qualityRange.value);
+  // A slow encode must not resurrect this image's output after a newer file
+  // was chosen (same last-write-wins race as the loader, one await later).
+  const gen = loadGen;
   canvas.toBlob((blob) => {
+    if (gen !== loadGen) return; // superseded by a newer file
     if (!blob) { showError('Could not encode the image in that format.'); return; }
     // Keep THIS render's clamp notice visible; only dismiss a stale notice.
     if (!didClamp) errorBox.classList.add('hidden');

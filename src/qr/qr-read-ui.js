@@ -3,6 +3,7 @@
 // with textContent, never innerHTML, and no link is ever auto-opened.
 import { parseQrPayload } from './decode.js';
 import { analyzePayload } from './risk.js';
+import { decodeImageData as decodeLinearBarcode } from '../barcode/decode.js';
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MAX_SIDE = 2048; // cap canvas dimension to bound memory on huge images
@@ -65,6 +66,7 @@ for (const tab of [tabCreate, tabRead]) {
 const dropzone = document.getElementById('read-dropzone');
 const fileInput = document.getElementById('read-file');
 const errorBox = document.getElementById('read-error');
+const barcodeHint = document.getElementById('read-barcode-hint');
 const results = document.getElementById('read-results');
 
 function el(tag, className, text) {
@@ -83,6 +85,7 @@ function showError(msg) {
 function clearError() {
   errorBox.textContent = '';
   errorBox.classList.add('hidden');
+  barcodeHint.classList.add('hidden');
 }
 
 // ---- rendering -----------------------------------------------------------
@@ -176,9 +179,14 @@ function renderResult(raw) {
 }
 
 // ---- decode pipeline -----------------------------------------------------
-function decodeImage(dataUrl) {
+// Bumped per chosen file; both async hops (FileReader, Image decode) check it so
+// a slow file A can never overwrite file B's result (last-write-wins race).
+let loadGen = 0;
+
+function decodeImage(dataUrl, gen) {
   const img = new Image();
   img.onload = () => {
+    if (gen !== loadGen) return; // superseded by a newer file
     if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
       showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
       return;
@@ -205,26 +213,44 @@ function decodeImage(dataUrl) {
     }
     const code = window.jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' });
     if (!code || !code.data) {
+      // Reciprocal cross-link: only claim "looks like a linear barcode" when the
+      // linear decoder actually decodes it — never a guess.
+      if (decodeLinearBarcode(imageData)) {
+        errorBox.classList.add('hidden');
+        results.replaceChildren();
+        barcodeHint.classList.remove('hidden');
+        return;
+      }
       showError('No QR code found in that image — try a clearer photo or a tighter crop around the code.');
       return;
     }
     clearError();
     renderResult(code.data);
   };
-  img.onerror = () => showError('That file could not be read as an image.');
+  img.onerror = () => { if (gen === loadGen) showError('That file could not be read as an image.'); };
   img.src = dataUrl;
 }
 
 function handleFile(file) {
   clearError();
   if (!file) return;
+  // Bump BEFORE validation: a rejected file must also supersede in-flight
+  // work, or an older decode finishing late would overwrite the rejection error.
+  const gen = ++loadGen;
+  // Fast-fail non-images (drag-drop bypasses the input's accept filter) before
+  // base64-reading megabytes only for img.onerror to reject them. An empty
+  // type is allowed — some platforms omit it for dropped files.
+  if (file.type && !file.type.startsWith('image/')) {
+    showError('Please choose an image file.');
+    return;
+  }
   if (file.size > MAX_FILE_BYTES) {
     showError(`${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
     return;
   }
   const reader = new FileReader();
-  reader.onload = () => decodeImage(reader.result);
-  reader.onerror = () => showError('Could not read that file.');
+  reader.onload = () => { if (gen === loadGen) decodeImage(reader.result, gen); };
+  reader.onerror = () => { if (gen === loadGen) showError('Could not read that file.'); };
   reader.readAsDataURL(file);
 }
 
@@ -235,7 +261,10 @@ dropzone.addEventListener('keydown', (e) => {
     fileInput.click();
   }
 });
-fileInput.addEventListener('change', () => handleFile(fileInput.files && fileInput.files[0]));
+fileInput.addEventListener('change', () => {
+  handleFile(fileInput.files && fileInput.files[0]);
+  fileInput.value = ''; // re-choosing the same file must fire change again
+});
 
 ['dragenter', 'dragover'].forEach((evt) =>
   dropzone.addEventListener(evt, (e) => {

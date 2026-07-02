@@ -21,6 +21,13 @@
   <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>Barcode Generator</h1>
+
+    <div class="tabs" role="tablist" aria-label="Barcode mode">
+      <button class="tab" id="tab-create" role="tab" aria-selected="true" aria-controls="panel-create" type="button">Create</button>
+      <button class="tab" id="tab-read" role="tab" aria-selected="false" aria-controls="panel-read" type="button" tabindex="-1">Read</button>
+    </div>
+
+    <div id="panel-create" role="tabpanel" aria-labelledby="tab-create">
     <p class="lead">Create linear barcodes — Code&nbsp;128, EAN-13, and UPC-A — entirely in your browser. Download as PNG or SVG, or copy the image.</p>
 
     <div class="card">
@@ -93,11 +100,35 @@
       <span aria-hidden="true">&#128274;</span>
       <span>Your barcodes are built entirely in your browser. Nothing you enter is uploaded.</span>
     </div>
+    </div><!-- /panel-create -->
+
+    <div id="panel-read" role="tabpanel" aria-labelledby="tab-read" hidden>
+      <p class="lead">Upload an image of a Code&nbsp;128, EAN-13, or UPC-A barcode to decode it. The image is decoded in your browser and never uploaded.</p>
+
+      <div class="card">
+        <div class="dropzone" id="read-dropzone" role="button" tabindex="0" aria-label="Drop a barcode image here or press Enter to choose a file">
+          <p><strong>Drop a barcode image here</strong> or click to choose.</p>
+          <p class="lead">PNG, JPEG, WebP, or GIF, up to 25&nbsp;MB. Works best with a sharp, straight-on picture.</p>
+          <input type="file" id="read-file" accept="image/*" class="hidden" />
+        </div>
+      </div>
+
+      <div id="read-error" class="msg error hidden" role="alert"></div>
+      <div id="read-qr-hint" class="msg note hidden">This looks like a QR code, not a linear barcode — use the <a href="qr.html">QR Code Studio</a> ("Read &amp; check" tab) instead.</div>
+      <div id="read-results" aria-live="polite"></div>
+
+      <div class="privacy-note">
+        <span aria-hidden="true">&#128274;</span>
+        <span>The image is decoded entirely on your device and never uploaded.</span>
+      </div>
+    </div><!-- /panel-read -->
   </main>
 
   <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
 
+  <script src="assets/vendor/jsQR.js"></script>
   <script type="module" src="src/shared/page.js"></script>
   <script type="module" src="src/barcode/barcode-ui.js"></script>
+  <script type="module" src="src/barcode/read-ui.js"></script>
 </body>
 </html>

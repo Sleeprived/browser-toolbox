@@ -733,6 +733,208 @@ describe('barcode UI (canvas draw guarded in jsdom)', () => {
   });
 });
 
+describe('index tool search', () => {
+  it('filters tiles case-insensitively, shows an empty state, and restores on clear', async () => {
+    loadBody('index.html');
+    await import('../src/shared/index-search.js');
+    const input = document.getElementById('tool-search');
+    const cards = [...document.querySelectorAll('.tool-card')];
+    expect(cards.length).toBeGreaterThan(0);
+
+    input.value = 'CHECKSUM';
+    input.dispatchEvent(new window.Event('input'));
+    const visible = cards.filter((c) => !c.classList.contains('hidden'));
+    expect(visible.length).toBeGreaterThanOrEqual(1);
+    expect(visible.every((c) => c.textContent.toLowerCase().includes('checksum'))).toBe(true);
+
+    input.value = 'zzzz-no-such-tool';
+    input.dispatchEvent(new window.Event('input'));
+    expect(cards.every((c) => c.classList.contains('hidden'))).toBe(true);
+    expect(document.getElementById('no-tools').classList.contains('hidden')).toBe(false);
+
+    input.value = '';
+    input.dispatchEvent(new window.Event('input'));
+    expect(cards.every((c) => !c.classList.contains('hidden'))).toBe(true);
+    expect(document.getElementById('no-tools').classList.contains('hidden')).toBe(true);
+  });
+
+  it('Escape clears an active filter', async () => {
+    loadBody('index.html');
+    await import('../src/shared/index-search.js');
+    const input = document.getElementById('tool-search');
+    input.value = 'qr';
+    input.dispatchEvent(new window.Event('input'));
+    input.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(input.value).toBe('');
+    expect([...document.querySelectorAll('.tool-card')].every((c) => !c.classList.contains('hidden'))).toBe(true);
+  });
+});
+
+describe('morse mic UI (no mediaDevices in jsdom)', () => {
+  it('module loads and Start shows a support error instead of throwing', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/mic-ui.js');
+    expect(document.getElementById('mic-stop').disabled).toBe(true);
+    document.getElementById('mic-start').dispatchEvent(new window.Event('click'));
+    await new Promise((r) => setTimeout(r, 0));
+    const err = document.getElementById('mic-error');
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(err.textContent).toMatch(/not supported/i);
+  });
+});
+
+describe('exif multi-file ordering', () => {
+  it('renders results in selection order even when reads finish out of order', async () => {
+    loadBody('exif.html');
+    await import('../src/exif/exif-ui.js');
+    const readers = [];
+    const OrigFR = global.FileReader;
+    global.FileReader = class {
+      readAsArrayBuffer() { readers.push(this); }
+    };
+    try {
+      const webp = new window.File([new Uint8Array(1)], 'first.webp', { type: 'image/webp' });
+      const gif = new window.File([new Uint8Array(1)], 'second.gif', { type: 'image/gif' });
+      const input = document.getElementById('file');
+      Object.defineProperty(input, 'files', { value: [webp, gif], configurable: true });
+      input.dispatchEvent(new window.Event('change'));
+      expect(readers.length).toBe(2);
+      // Finish the SECOND file's read first (the race the slots fix).
+      readers[1].result = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]).buffer; // GIF89a
+      readers[1].onload();
+      readers[0].result = new Uint8Array([
+        0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, // RIFF….WEBP
+      ]).buffer;
+      readers[0].onload();
+      const cards = [...document.querySelectorAll('#results .file-item')];
+      expect(cards.length).toBe(2);
+      expect(cards[0].textContent).toContain('first.webp');
+      expect(cards[1].textContent).toContain('second.gif');
+    } finally {
+      global.FileReader = OrigFR;
+    }
+  });
+});
+
+describe('barcode reader UI (non-canvas wiring)', () => {
+  it('starts on Create and switches to Read on click', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/read-ui.js');
+    expect(document.getElementById('tab-create').getAttribute('aria-selected')).toBe('true');
+    document.getElementById('tab-read').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('panel-read').hidden).toBe(false);
+    expect(document.getElementById('panel-create').hidden).toBe(true);
+  });
+
+  it('shows an error and no results for an oversized file (no canvas needed)', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/read-ui.js');
+    const big = new window.File([new Uint8Array(1)], 'huge.png', { type: 'image/png' });
+    Object.defineProperty(big, 'size', { value: 26 * 1024 * 1024 });
+    const drop = new window.Event('drop');
+    Object.defineProperty(drop, 'dataTransfer', { value: { files: [big] } });
+    document.getElementById('read-dropzone').dispatchEvent(drop);
+    const err = document.getElementById('read-error');
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(err.textContent).toMatch(/25 MB limit/);
+    expect(document.getElementById('read-results').children.length).toBe(0);
+  });
+
+  it('Recreate fills the generator form with validated data and switches tabs', async () => {
+    loadBody('barcode.html');
+    await import('../src/barcode/barcode-ui.js');
+    const mod = await import('../src/barcode/read-ui.js');
+    document.getElementById('tab-read').dispatchEvent(new window.Event('click'));
+    mod.showResult({ format: 'ean13', text: '5901234123457', full: '5901234123457', firstDigit: 5, checkDigit: 7, reversed: false });
+    expect(document.getElementById('read-results').textContent).toContain('EAN-13 detected');
+    const btn = [...document.querySelectorAll('#read-results button')]
+      .find((b) => b.textContent.includes('Recreate'));
+    expect(btn.disabled).toBe(false);
+    btn.dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('symbology').value).toBe('ean13');
+    expect(document.getElementById('data').value).toBe('5901234123457');
+    expect(document.getElementById('panel-create').hidden).toBe(false);
+    // The generator re-ran and validated the supplied check digit.
+    expect(document.getElementById('barcode-status').textContent).toMatch(/Check digit: 7/);
+  });
+
+  it('disables Recreate for decoded data the generator cannot encode', async () => {
+    loadBody('barcode.html');
+    const mod = await import('../src/barcode/read-ui.js');
+    mod.showResult({ format: 'code128', text: 'has\u0007control', codeSets: ['A'], checkSymbol: 12, reversed: false });
+    const btn = [...document.querySelectorAll('#read-results button')]
+      .find((b) => b.textContent.includes('Recreate'));
+    expect(btn.disabled).toBe(true);
+    expect(document.getElementById('read-results').textContent).toMatch(/cannot encode/);
+  });
+});
+
+describe('code-review carry-over regressions', () => {
+  it('Enter on the master field does not bypass a disabled Unlock button', async () => {
+    loadBody('vault.html');
+    await import('../src/vault/vault-ui.js');
+    const master = document.getElementById('unlock-master');
+    const btn = document.getElementById('unlock-confirm');
+    const err = document.getElementById('unlock-error');
+    // Disabled (an unlock is already in flight): Enter must be a no-op.
+    btn.disabled = true;
+    master.value = '';
+    master.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(err.classList.contains('hidden')).toBe(true);
+    // Enabled: Enter still reaches doUnlock (empty password -> visible error).
+    btn.disabled = false;
+    master.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(err.classList.contains('hidden')).toBe(false);
+    expect(err.textContent).toMatch(/master password/i);
+  });
+
+  it('defers revoking a download blob URL instead of revoking synchronously', async () => {
+    vi.useFakeTimers();
+    const revoked = [];
+    const origCreate = global.URL.createObjectURL;
+    const origRevoke = global.URL.revokeObjectURL;
+    const origClick = window.HTMLAnchorElement.prototype.click;
+    global.URL.createObjectURL = () => 'blob:fake';
+    global.URL.revokeObjectURL = (u) => revoked.push(u);
+    window.HTMLAnchorElement.prototype.click = () => {};
+    try {
+      loadBody('csv.html');
+      await import('../src/csv/csv-ui.js');
+      document.getElementById('csv-in').value = 'a,b\n1,2';
+      document.getElementById('parse').dispatchEvent(new window.Event('click'));
+      document.getElementById('dl-csv').dispatchEvent(new window.Event('click'));
+      expect(revoked.length).toBe(0); // a sync revoke can cancel the download
+      vi.advanceTimersByTime(1100);
+      expect(revoked).toEqual(['blob:fake']);
+    } finally {
+      global.URL.createObjectURL = origCreate;
+      global.URL.revokeObjectURL = origRevoke;
+      window.HTMLAnchorElement.prototype.click = origClick;
+      vi.useRealTimers();
+    }
+  });
+
+  it('labels the hash digest with the algorithm that computed it after a mid-compute switch', async () => {
+    loadBody('hash.html');
+    await import('../src/hash/hash-ui.js');
+    const text = document.getElementById('hash-text');
+    const algo = document.getElementById('hash-algo');
+    const out = document.getElementById('hash-out');
+    text.value = 'abc';
+    text.dispatchEvent(new window.Event('input'));   // starts a SHA-256 digest
+    algo.value = 'SHA-512';
+    algo.dispatchEvent(new window.Event('change'));  // supersedes it mid-flight
+    for (let i = 0; i < 200 && !out.textContent; i++) await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => setTimeout(r, 50)); // give any stale write a chance to (wrongly) land
+    expect(document.getElementById('hash-source').textContent).toContain('SHA-512');
+    // SHA-512("abc") — the digest must match its label, not the superseded algorithm.
+    expect(out.textContent).toBe(
+      'ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a' +
+      '2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f',
+    );
+  });
+});
+
 describe('morse tap keyer UI', () => {
   it('a pad tap commits a dot and the decoder shows E', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
@@ -751,6 +953,20 @@ describe('morse tap keyer UI', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('clicking Change key again cancels an armed rebind, and Esc still cancels', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    await import('../src/morse/tap-ui.js');
+    const keyBtn = document.getElementById('tap-key-change');
+    keyBtn.dispatchEvent(new window.Event('click'));
+    expect(keyBtn.textContent).toMatch(/cancels/i);
+    keyBtn.dispatchEvent(new window.Event('click')); // visible cancel affordance
+    expect(keyBtn.textContent).toMatch(/now: Space/);
+    keyBtn.dispatchEvent(new window.Event('click'));
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { code: 'Escape' }));
+    expect(keyBtn.textContent).toMatch(/now: Space/); // Esc canceled without rebinding
   });
 
   it('undo removes the last committed token', async () => {
@@ -779,5 +995,176 @@ describe('morse tap keyer UI', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('diff UI', () => {
+  it('compares two texts and reports changed lines', async () => {
+    loadBody('diff.html');
+    await import('../src/diff/diff-ui.js');
+    document.getElementById('diff-a').value = 'alpha\nbeta\ngamma';
+    document.getElementById('diff-b').value = 'alpha\nbeta changed\ngamma';
+    document.getElementById('diff-run').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('diff-msg').textContent).toMatch(/2 changed line/);
+    const out = document.getElementById('diff-out');
+    expect(out.classList.contains('hidden')).toBe(false);
+    expect(out.querySelectorAll('.diff-line.del').length).toBe(1);
+    expect(out.querySelectorAll('.diff-line.add').length).toBe(1);
+    expect(out.querySelectorAll('mark.diff-word').length).toBeGreaterThan(0);
+  });
+
+  it('side-by-side view renders a two-column grid', async () => {
+    loadBody('diff.html');
+    await import('../src/diff/diff-ui.js');
+    document.getElementById('diff-a').value = 'one\ntwo';
+    document.getElementById('diff-b').value = 'one\nthree';
+    document.getElementById('diff-view').value = 'side';
+    document.getElementById('diff-run').dispatchEvent(new window.Event('click'));
+    expect(document.querySelector('#diff-out .diff-grid')).not.toBeNull();
+  });
+
+  it('identical texts and empty input each get an honest message', async () => {
+    loadBody('diff.html');
+    await import('../src/diff/diff-ui.js');
+    document.getElementById('diff-run').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('diff-msg').textContent).toMatch(/Nothing to compare/);
+    document.getElementById('diff-a').value = 'same';
+    document.getElementById('diff-b').value = 'same';
+    document.getElementById('diff-run').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('diff-msg').textContent).toMatch(/identical/);
+  });
+});
+
+describe('regex UI', () => {
+  // Evaluation is debounced (200 ms) so half-typed patterns never run.
+  const settle = () => new Promise((r) => setTimeout(r, 250));
+
+  it('highlights matches and lists groups live', async () => {
+    loadBody('regex.html');
+    await import('../src/regex/regex-ui.js');
+    document.getElementById('re-pattern').value = '(\\w+)@(\\w+)';
+    document.getElementById('re-text').value = 'mail me at someone@example please';
+    document.getElementById('re-text').dispatchEvent(new window.Event('input'));
+    await settle();
+    expect(document.getElementById('re-summary').textContent).toMatch(/1 match\./);
+    expect(document.querySelectorAll('#re-highlight mark.re-match').length).toBe(1);
+    const dts = [...document.querySelectorAll('#re-matches dt')].map((d) => d.textContent);
+    expect(dts).toContain('Group 1');
+    expect(dts).toContain('Group 2');
+  });
+
+  it('shows an inline error for a bad pattern and recovers', async () => {
+    loadBody('regex.html');
+    await import('../src/regex/regex-ui.js');
+    const pattern = document.getElementById('re-pattern');
+    pattern.value = '(unclosed';
+    document.getElementById('re-text').value = 'abc';
+    pattern.dispatchEvent(new window.Event('input'));
+    await settle();
+    const err = document.getElementById('re-error');
+    expect(err.classList.contains('hidden')).toBe(false);
+    pattern.value = 'abc';
+    pattern.dispatchEvent(new window.Event('input'));
+    await settle();
+    expect(err.classList.contains('hidden')).toBe(true);
+    expect(document.getElementById('re-summary').textContent).toMatch(/1 match\./);
+  });
+
+  it('rejects invalid flags with a message', async () => {
+    loadBody('regex.html');
+    await import('../src/regex/regex-ui.js');
+    document.getElementById('re-pattern').value = 'a';
+    document.getElementById('re-text').value = 'aaa';
+    const flags = document.getElementById('re-flags');
+    flags.value = 'gz';
+    flags.dispatchEvent(new window.Event('input'));
+    await settle();
+    expect(document.getElementById('re-error').classList.contains('hidden')).toBe(false);
+  });
+});
+
+describe('timestamp & UUID UI', () => {
+  it('converts an epoch in seconds and shows all three formats', async () => {
+    loadBody('timestamp.html');
+    await import('../src/timestamp/timestamp-ui.js');
+    const input = document.getElementById('ts-epoch');
+    input.value = '0';
+    input.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('ts-unit').textContent).toBe('Seconds');
+    expect(document.getElementById('ts-iso').textContent).toBe('1970-01-01T00:00:00.000Z');
+    expect(document.getElementById('ts-out').classList.contains('hidden')).toBe(false);
+  });
+
+  it('shows an inline error for a non-numeric timestamp', async () => {
+    loadBody('timestamp.html');
+    await import('../src/timestamp/timestamp-ui.js');
+    const input = document.getElementById('ts-epoch');
+    input.value = 'yesterday';
+    input.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('ts-error').classList.contains('hidden')).toBe(false);
+  });
+
+  it('Now button fills the field and renders a result', async () => {
+    loadBody('timestamp.html');
+    await import('../src/timestamp/timestamp-ui.js');
+    document.getElementById('ts-now').dispatchEvent(new window.Event('click'));
+    expect(document.getElementById('ts-epoch').value).toMatch(/^\d+$/);
+    expect(document.getElementById('ts-out').classList.contains('hidden')).toBe(false);
+  });
+
+  it('generates a v4 UUID and inspects it', async () => {
+    loadBody('timestamp.html');
+    await import('../src/timestamp/timestamp-ui.js');
+    document.getElementById('uuid-gen').dispatchEvent(new window.Event('click'));
+    const uuid = document.getElementById('uuid-out').textContent;
+    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const inspect = document.getElementById('uuid-in');
+    inspect.value = uuid;
+    inspect.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('uuid-version').textContent).toBe('4');
+    expect(document.getElementById('uuid-variant').textContent).toBe('RFC 4122');
+    expect(document.getElementById('uuid-time').textContent).toMatch(/Not applicable/);
+  });
+
+  it('rejects a malformed UUID with an inline error', async () => {
+    loadBody('timestamp.html');
+    await import('../src/timestamp/timestamp-ui.js');
+    const inspect = document.getElementById('uuid-in');
+    inspect.value = 'not-a-uuid';
+    inspect.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('uuid-error').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('uuid-info').classList.contains('hidden')).toBe(true);
+  });
+});
+
+describe('contrast UI', () => {
+  it('renders the default pair with a ratio and badges on load', async () => {
+    loadBody('contrast.html');
+    await import('../src/contrast/contrast-ui.js');
+    expect(document.getElementById('ct-ratio').textContent).toMatch(/^\d+\.\d{2}:1$/);
+    expect(document.getElementById('ct-aa-normal').textContent).toBe('Pass');
+  });
+
+  it('typing a valid hex updates ratio, badges, and the linked picker', async () => {
+    loadBody('contrast.html');
+    await import('../src/contrast/contrast-ui.js');
+    const fg = document.getElementById('ct-fg-hex');
+    fg.value = '#777777';
+    fg.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('ct-ratio').textContent).toBe('4.47:1'); // floored, never overstated
+    expect(document.getElementById('ct-aa-normal').textContent).toBe('Fail');
+    expect(document.getElementById('ct-aa-large').textContent).toBe('Pass');
+    expect(document.getElementById('ct-fg-pick').value).toBe('#777777');
+  });
+
+  it('invalid hex shows an error and keeps the last valid ratio', async () => {
+    loadBody('contrast.html');
+    await import('../src/contrast/contrast-ui.js');
+    const before = document.getElementById('ct-ratio').textContent;
+    const fg = document.getElementById('ct-fg-hex');
+    fg.value = '#zzz';
+    fg.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('ct-error').classList.contains('hidden')).toBe(false);
+    expect(document.getElementById('ct-ratio').textContent).toBe(before);
   });
 });

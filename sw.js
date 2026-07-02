@@ -4,7 +4,7 @@
 // users receive the new build. Only the app's own assets are cached — no
 // third-party requests are ever made.
 
-const CACHE_VERSION = 'v22';
+const CACHE_VERSION = 'v23';
 const CACHE_NAME = `browser-toolbox-${CACHE_VERSION}`;
 
 // Paths are relative to the service worker's location (the site root), so this
@@ -88,6 +88,23 @@ const ASSETS = [
   'src/barcode/ean.js',
   'src/barcode/render.js',
   'src/barcode/barcode-ui.js',
+  'src/barcode/decode.js',
+  'src/barcode/read-ui.js',
+  'src/morse/mic.js',
+  'src/morse/mic-ui.js',
+  'src/shared/index-search.js',
+  'diff.html',
+  'src/diff/diff.js',
+  'src/diff/diff-ui.js',
+  'regex.html',
+  'src/regex/regex.js',
+  'src/regex/regex-ui.js',
+  'timestamp.html',
+  'src/timestamp/timestamp.js',
+  'src/timestamp/timestamp-ui.js',
+  'contrast.html',
+  'src/contrast/contrast.js',
+  'src/contrast/contrast-ui.js',
   'assets/img/icon-192.png',
   'assets/img/icon-512.png',
   'assets/img/icon-maskable-512.png',
@@ -104,8 +121,14 @@ self.addEventListener('install', (event) => {
           return cache.add(url).catch(() => null);
         }),
       ),
-    ).then(() => self.skipWaiting()),
+    ),
+    // No skipWaiting() here: the new worker WAITS until the user accepts the
+    // "update ready" toast (page.js posts SKIP_WAITING below) or all tabs close.
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -126,15 +149,22 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
 
   // Navigations: stale-while-revalidate so a new deploy is fetched in the
-  // background and served on the NEXT load (one-load-behind, documented in README).
+  // background; when the refreshed worker is waiting, the page shows the
+  // "update ready" toast so the user can activate it immediately instead of
+  // being one load behind. ignoreSearch: a navigation carrying a query string
+  // (e.g. a share link) must still hit the cached page shell.
   if (req.mode === 'navigate') {
     event.respondWith(
-      caches.match(req).then((cached) => {
+      caches.match(req, { ignoreSearch: true }).then((cached) => {
         const network = fetch(req)
           .then((resp) => {
             if (resp && resp.ok && resp.type === 'basic') {
               const clone = resp.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(req, clone)).catch(() => {});
+              // Store under the search-stripped URL: matching ignores the
+              // query, so per-query duplicate entries would pile up unread.
+              const bare = new URL(req.url);
+              bare.search = '';
+              caches.open(CACHE_NAME).then((cache) => cache.put(bare.href, clone)).catch(() => {});
             }
             return resp;
           })

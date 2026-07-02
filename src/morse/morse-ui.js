@@ -19,6 +19,7 @@ const flashBtn = $('morse-flash');
 const vibrateBtn = $('morse-vibrate');
 const flasher = $('morse-flasher');
 
+const progressEl = $('morse-progress');
 const wpmEl = $('morse-wpm');
 const wpmVal = $('morse-wpm-val');
 const cwpmEl = $('morse-cwpm');
@@ -45,11 +46,29 @@ function setPlaying(playing) {
   stopBtn.disabled = !playing;
 }
 
+// Playback progress bar: audio is scheduled ahead on the Web Audio clock, so
+// progress is tracked against wall time over the timeline's known duration.
+let progressTimer = 0;
+function stopProgress() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = 0; }
+  progressEl.hidden = true;
+  progressEl.value = 0;
+}
+function startProgress(totalMs) {
+  stopProgress();
+  progressEl.hidden = false;
+  const startedAt = Date.now();
+  progressTimer = setInterval(() => {
+    progressEl.value = Math.min(100, ((Date.now() - startedAt) / totalMs) * 100);
+  }, 100);
+}
+
 function update() {
   copiedEl.classList.add('hidden');
   player.stopAll();
   setFlasher(false);
   setPlaying(false);
+  stopProgress();
   errorEl.classList.add('hidden');
   skippedEl.classList.add('hidden');
 
@@ -107,15 +126,17 @@ playBtn.addEventListener('click', () => {
   if (!tl) return;
   const ok = player.playAudio(tl, {
     freq: readSettings().freq,
-    onEnd: () => setPlaying(false),
+    onEnd: () => { setPlaying(false); stopProgress(); },
   });
   setPlaying(ok);
+  if (ok) startProgress(tl.totalMs);
 });
 
 stopBtn.addEventListener('click', () => {
   player.stopAll();
   setFlasher(false);
   setPlaying(false);
+  stopProgress();
 });
 
 downloadBtn.addEventListener('click', () => {
@@ -133,6 +154,7 @@ flashBtn.addEventListener('click', () => {
   // flash() stops any running audio via stopAll(), which suppresses the
   // oscillator's onEnd — reset the Play/Stop buttons here or Play stays disabled.
   setPlaying(false);
+  stopProgress();
 });
 
 vibrateBtn.addEventListener('click', () => {
@@ -141,6 +163,7 @@ vibrateBtn.addEventListener('click', () => {
   player.vibrate(tl);
   // Same as flash(): vibrate() stopAll()s audio without firing onEnd.
   setPlaying(false);
+  stopProgress();
 });
 
 copyBtn.addEventListener('click', async () => {
@@ -177,8 +200,15 @@ if (!player.vibrateSupported()) {
   vibrateBtn.title = 'Vibration is not supported on this device.';
 }
 
-// Stop all output if the page is hidden or unloaded.
-window.addEventListener('pagehide', () => player.stopAll());
-document.addEventListener('visibilitychange', () => { if (document.hidden) player.stopAll(); });
+// Stop all output if the page is hidden or unloaded. stopAll() suppresses the
+// oscillator's onEnd, so the progress bar and buttons are reset here explicitly.
+function haltOutput() {
+  player.stopAll();
+  setFlasher(false);
+  setPlaying(false);
+  stopProgress();
+}
+window.addEventListener('pagehide', haltOutput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) haltOutput(); });
 
 update();

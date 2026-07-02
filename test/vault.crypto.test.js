@@ -4,12 +4,15 @@ import {
   encryptVaultWithKey,
   decryptVault,
   deriveKey,
+  validateEnvelope,
   VaultCryptoError,
   DEFAULT_ITERATIONS,
+  MIN_ITERATIONS,
 } from '../src/vault/crypto.js';
 
-// Keep tests fast: PBKDF2 work factor is irrelevant to correctness, so override it.
-const FAST = { iterations: 1000 };
+// Keep tests fast: PBKDF2 work factor is irrelevant to correctness, so use the
+// smallest count validateEnvelope will accept (the MIN_ITERATIONS floor).
+const FAST = { iterations: MIN_ITERATIONS };
 
 const SAMPLE = {
   version: 1,
@@ -30,7 +33,7 @@ describe('encryptVault / decryptVault', () => {
     expect(env.format).toBe('browser-toolbox-vault');
     expect(env.version).toBe(1);
     expect(env.cipher).toBe('AES-GCM');
-    expect(env.kdf).toMatchObject({ name: 'PBKDF2', hash: 'SHA-256', iterations: 1000 });
+    expect(env.kdf).toMatchObject({ name: 'PBKDF2', hash: 'SHA-256', iterations: MIN_ITERATIONS });
     expect(typeof env.kdf.salt).toBe('string');
     expect(typeof env.iv).toBe('string');
     expect(typeof env.ciphertext).toBe('string');
@@ -86,6 +89,21 @@ describe('encryptVault / decryptVault', () => {
     await expect(decryptVault(bad, 'pw')).rejects.toThrow(/implausibly high/i);
   });
 
+  it('validateEnvelope itself rejects a low-iteration envelope (floor lives in crypto, not the UI)', async () => {
+    const env = await encryptVault(SAMPLE, 'pw', FAST);
+    const low = { ...env, kdf: { ...env.kdf, iterations: MIN_ITERATIONS - 1 } };
+    expect(() => validateEnvelope(low)).toThrow(VaultCryptoError);
+    expect(() => validateEnvelope(low)).toThrow(/too few/i);
+    // …and the floor value passes.
+    expect(() => validateEnvelope(env)).not.toThrow();
+  });
+
+  it('decryptVault inherits the low-iteration floor', async () => {
+    const env = await encryptVault(SAMPLE, 'pw', FAST);
+    const low = { ...env, kdf: { ...env.kdf, iterations: 1000 } };
+    await expect(decryptVault(low, 'pw')).rejects.toThrow(/too few/i);
+  });
+
   it('deriveKey itself caps the iteration count', async () => {
     const salt = new Uint8Array(16).fill(7);
     await expect(deriveKey('pw', salt, 2000000000)).rejects.toThrow(/maximum/i);
@@ -111,11 +129,11 @@ describe('encryptVault / decryptVault', () => {
 
   it('encryptVaultWithKey round-trips and embeds the supplied salt (session re-save path)', async () => {
     const salt = new Uint8Array(16).fill(3);
-    const key = await deriveKey('pw', salt, 1000);
-    const env = await encryptVaultWithKey(SAMPLE, key, salt, 1000);
+    const key = await deriveKey('pw', salt, MIN_ITERATIONS);
+    const env = await encryptVaultWithKey(SAMPLE, key, salt, MIN_ITERATIONS);
     // The salt the key was derived from must be embedded verbatim, or the file won't open.
     expect(env.kdf.salt).toBe(btoa(String.fromCharCode(...salt)));
-    expect(env.kdf.iterations).toBe(1000);
+    expect(env.kdf.iterations).toBe(MIN_ITERATIONS);
     const { vault } = await decryptVault(env, 'pw');
     expect(vault).toEqual(SAMPLE);
   });

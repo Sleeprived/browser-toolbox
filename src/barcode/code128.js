@@ -8,7 +8,8 @@ export class BarcodeError extends Error {}
 // Each string is the bar/space run-length sequence (bar first). Values 0..102 are
 // data, 103/104/105 are START A/B/C, 106 is STOP (its 7 runs include the final
 // bar). Sum of runs is 11 modules for data/start symbols and 13 for STOP.
-const PATTERNS = [
+// Exported so the decoder can reverse the same table.
+export const PATTERNS = [
   '212222', '222122', '222221', '121223', '121322', '131222', '122213', '122312',
   '132212', '221213', '221312', '231212', '112232', '122132', '122231', '113222',
   '123122', '123221', '223211', '221132', '221231', '213212', '223112', '312131',

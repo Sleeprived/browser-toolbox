@@ -1,9 +1,9 @@
 {
   "name": "browser-toolbox",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "private": true,
   "type": "module",
-  "description": "Fifteen no-upload, fully client-side browser tools (QR, EXIF cleaner, passphrase, password vault, CSV<->JSON, palette, cron, encode/decode, JWT decoder, image resizer, Morse code, cipher studio, TOTP/2FA generator, hash & checksum verifier, barcode generator) as an installable PWA.",
+  "description": "Nineteen no-upload, fully client-side browser tools (QR, EXIF cleaner, passphrase, password vault, CSV<->JSON, palette, cron, encode/decode, JWT decoder, image resizer, Morse code, cipher studio, TOTP/2FA generator, hash & checksum verifier, barcode generator & reader, text diff, regex tester, timestamp & UUID, contrast checker) as an installable PWA.",
   "scripts": {
     "test": "vitest run"
   },

@@ -17,9 +17,16 @@ const SHORTENERS = new Set([
   'buff.ly', 'soo.gd', 'clck.ru', 'cli.gs', 'shorte.st', 'adf.ly',
 ]);
 
-function isIpv4(host) {
-  if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) return false;
-  return host.split('.').every((o) => Number(o) <= 255);
+// Exported for tests. Besides the dotted quad, browsers also accept a single
+// 32-bit number as an IPv4 host — decimal (http://2130706433/) or hex
+// (http://0x7f000001/) — so those forms must trip the straight-to-IP warning too.
+export function isIpv4(host) {
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    return host.split('.').every((o) => Number(o) <= 255);
+  }
+  if (/^\d+$/.test(host)) return Number(host) <= 0xffffffff;
+  if (/^0x[0-9a-f]+$/i.test(host)) return parseInt(host, 16) <= 0xffffffff;
+  return false;
 }
 
 function analyzeUrl(url) {

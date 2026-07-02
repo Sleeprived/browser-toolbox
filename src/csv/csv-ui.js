@@ -228,7 +228,9 @@ function download(filename, text, mime) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Deferred like player.js/vault-ui: a synchronous revoke can cancel the
+  // just-started download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 parseBtn.addEventListener('click', parseFromText);

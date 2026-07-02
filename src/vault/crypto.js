@@ -26,6 +26,12 @@ export const DEFAULT_ITERATIONS = 600000;
 // worst-case main-thread freeze when opening a hostile file to a few seconds.
 export const MAX_ITERATIONS = 4000000;
 
+// Floor on the iteration count accepted from an opened vault file. The app only
+// ever writes DEFAULT_ITERATIONS; a far-lower value means the file was crafted or
+// hand-edited to strip PBKDF2's brute-force cost. Enforced in validateEnvelope so
+// every open path inherits it.
+export const MIN_ITERATIONS = 100000;
+
 export const FORMAT = 'browser-toolbox-vault';
 export const FORMAT_VERSION = 1;
 
@@ -122,13 +128,14 @@ export async function encryptVaultWithKey(vaultObject, key, saltBytes, iteration
   return encryptWith(key, vaultObject, saltBytes, iterations);
 }
 
-function validateEnvelope(env) {
+export function validateEnvelope(env) {
   if (!env || typeof env !== 'object') throw new VaultCryptoError('Not a vault file.');
   const { kdf, iv, ciphertext } = env;
   if (!kdf || typeof kdf !== 'object') throw new VaultCryptoError('Vault file is missing its key-derivation header.');
   if (kdf.name !== 'PBKDF2') throw new VaultCryptoError(`Unsupported key-derivation function: ${kdf.name}.`);
   if (typeof kdf.salt !== 'string') throw new VaultCryptoError('Vault file is missing its salt.');
   if (!Number.isInteger(kdf.iterations) || kdf.iterations < 1) throw new VaultCryptoError('Vault file has an invalid iteration count.');
+  if (kdf.iterations < MIN_ITERATIONS) throw new VaultCryptoError('This vault file uses too few key-derivation iterations to be safe (it may be tampered or hand-edited). Refusing to open it.');
   if (kdf.iterations > MAX_ITERATIONS) throw new VaultCryptoError('Vault file iteration count is implausibly high; refusing to open.');
   if (env.cipher && env.cipher !== 'AES-GCM') throw new VaultCryptoError(`Unsupported cipher: ${env.cipher}.`);
   if (typeof iv !== 'string') throw new VaultCryptoError('Vault file is missing its IV.');

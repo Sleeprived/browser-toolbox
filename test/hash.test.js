@@ -52,3 +52,38 @@ describe('digest -> hex (Web Crypto, if available)', () => {
     expect(bytesToHex(new Uint8Array(buf))).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
   });
 });
+
+describe('normalizeHex algorithm-label prefixes (checksum paste tolerance)', () => {
+  it('strips sha256:/SHA-512:/md5:-style prefixes', () => {
+    expect(normalizeHex('sha256:DEADbeef')).toBe('deadbeef');
+    expect(normalizeHex('SHA-512: dead beef')).toBe('deadbeef');
+    expect(normalizeHex('  sha1 = deadbeef')).toBe('deadbeef');
+    expect(normalizeHex('md5:d41d8cd9')).toBe('d41d8cd9');
+    expect(normalizeHex('sha256:0xDEADBEEF')).toBe('deadbeef');
+  });
+  it('does not eat leading hex that merely looks label-ish', () => {
+    expect(normalizeHex('abc123')).toBe('abc123');
+    expect(normalizeHex('5abc123')).toBe('5abc123');
+  });
+  it('hexEquals matches a labeled checksum against a computed digest', () => {
+    expect(hexEquals('deadbeef', 'sha256:DE:AD:BE:EF')).toBe(true);
+  });
+  it('strips sha3-256:, sha512/256:, sha256sum =, and BSD-style labels', () => {
+    expect(normalizeHex('sha3-256: deadbeef')).toBe('deadbeef');
+    expect(normalizeHex('sha512/256:deadbeef')).toBe('deadbeef');
+    expect(normalizeHex('sha256sum = deadbeef')).toBe('deadbeef');
+    expect(normalizeHex('SHA256 (file.iso) = deadbeef')).toBe('deadbeef');
+  });
+  it('cuts a pasted checker line after the digest instead of folding in the filename', () => {
+    const digest = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    expect(normalizeHex(`${digest}  fedora.iso`)).toBe(digest);
+    expect(normalizeHex(`${digest} *disc-image.bin`)).toBe(digest);
+    expect(hexEquals(digest, `${digest}  fedora.iso`)).toBe(true);
+  });
+  it('rejoins a digest wrapped across whitespace instead of truncating it', () => {
+    const half1 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    const half2 = 'a3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b850';
+    expect(normalizeHex(`${half1}\n${half2}`)).toBe(half1 + half2); // wrapped SHA-512
+    expect(normalizeHex(`${half1} ${half2} fedora.iso`)).toBe(half1); // filename still cuts
+  });
+});

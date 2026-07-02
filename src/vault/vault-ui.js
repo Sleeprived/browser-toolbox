@@ -12,6 +12,7 @@ import {
   decryptVault,
   deriveKey,
   DEFAULT_ITERATIONS,
+  MIN_ITERATIONS,
   VaultCryptoError,
 } from './crypto.js';
 import {
@@ -37,7 +38,6 @@ const $ = (id) => document.getElementById(id);
 const CLIPBOARD_CLEAR_MS = 25000;
 const DEFAULT_FILENAME = 'vault.browser-toolbox.json';
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // app-wide cap: warn & skip any file over 25 MB
-const MIN_ITERATIONS = 100000; // refuse a vault file whose KDF work factor is implausibly low (crafted/tampered)
 
 // ----- in-memory state (never persisted) -----
 const state = {
@@ -273,9 +273,9 @@ async function onFileChosen(file) {
     setError($('open-error'), 'That file is not valid JSON. Choose a vault file exported by this tool.');
     return;
   }
-  // Refuse a file whose KDF work factor is implausibly low: opening it would reduce
-  // PBKDF2 to near-zero cost (the app only ever writes DEFAULT_ITERATIONS), so such a
-  // file is crafted or tampered. The high-side cap lives in the crypto validator.
+  // Refuse a file whose KDF work factor is implausibly low, at file-choose time so
+  // the user hears about it before typing a password. validateEnvelope enforces the
+  // same floor (and the high-side cap) for every open path.
   if (envelope && envelope.kdf && Number.isInteger(envelope.kdf.iterations) && envelope.kdf.iterations < MIN_ITERATIONS) {
     setError($('open-error'), 'This vault file uses too few key-derivation iterations to be safe (it may be tampered or hand-edited). Refusing to open it.');
     return;
@@ -974,7 +974,9 @@ function init() {
   wireReveal('unlock-reveal', 'unlock-master');
   $('unlock-confirm').addEventListener('click', doUnlock);
   $('unlock-cancel').addEventListener('click', lock);
-  $('unlock-master').addEventListener('keydown', (e) => { if (e.key === 'Enter') doUnlock(); });
+  // Match the button's disabled state: while an unlock is in flight the button is
+  // disabled, and Enter must not start a second concurrent attempt.
+  $('unlock-master').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !$('unlock-confirm').disabled) doUnlock(); });
 
   // App toolbar
   $('vault-search').addEventListener('input', renderList);

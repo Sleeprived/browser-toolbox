@@ -41,7 +41,9 @@ function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Deferred like player.js/vault-ui: a synchronous revoke can cancel the
+  // just-started download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function cleanName(name, suffix) {
@@ -86,7 +88,7 @@ function detectFormat(bytes) {
   return 'unknown';
 }
 
-function processFile(file) {
+function processFile(file, slot) {
   const reader = new FileReader();
   reader.onload = () => {
     const bytes = new Uint8Array(reader.result);
@@ -116,12 +118,12 @@ function processFile(file) {
           gif: 'GIF is not supported — convert to PNG first.',
           heic: 'HEIC/HEIF is not supported — convert to JPEG first.',
         }[fmt] || 'Not a JPEG or PNG — skipped.';
-        renderCard(file, [hint], null, null, true);
+        renderCard(file, [hint], null, null, true, slot);
         return;
       }
     } catch (e) {
       const msg = e && e.message ? e.message : String(e);
-      renderCard(file, [`Could not process: ${msg}`], null, null, true);
+      renderCard(file, [`Could not process: ${msg}`], null, null, true, slot);
       return;
     }
 
@@ -152,13 +154,13 @@ function processFile(file) {
     }
 
     const blob = new Blob([cleaned], { type: mime });
-    renderCard(file, found, blob, cleanName(file.name, '-clean'));
+    renderCard(file, found, blob, cleanName(file.name, '-clean'), false, slot);
   };
-  reader.onerror = () => renderCard(file, ['Could not read file.'], null, null, true);
+  reader.onerror = () => renderCard(file, ['Could not read file.'], null, null, true, slot);
   reader.readAsArrayBuffer(file);
 }
 
-function renderCard(file, foundLines, blob, downloadName, isError) {
+function renderCard(file, foundLines, blob, downloadName, isError, slot) {
   const card = el('div', 'file-item');
   const meta = el('div', 'meta');
   meta.appendChild(el('div', null, file.name));
@@ -181,8 +183,12 @@ function renderCard(file, foundLines, blob, downloadName, isError) {
     card.appendChild(btn);
   }
   if (isError) card.classList.add('msg');
-  results.appendChild(card);
-  clearBtn.classList.remove('hidden');
+  // Fill the pre-created slot so multi-file results always appear in SELECTION
+  // order, not in FileReader completion order (a small file can finish first).
+  (slot || results).appendChild(card);
+  // "Clear all" mid-read detaches the slots; a late result landing in a
+  // detached slot is discarded and must not re-show the Clear button.
+  if ((slot || results).isConnected) clearBtn.classList.remove('hidden');
 }
 
 clearBtn.addEventListener('click', () => {
@@ -196,11 +202,15 @@ function handleFiles(fileList) {
   const files = Array.from(fileList);
   if (files.length === 0) return;
   for (const file of files) {
+    // One slot per file, created up front in selection order; each async result
+    // lands in its own slot regardless of which file finishes reading first.
+    const slot = el('div');
+    results.appendChild(slot);
     if (file.size > MAX_FILE_BYTES) {
-      renderCard(file, [`${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit. Skipped.`], null, null, true);
+      renderCard(file, [`${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit. Skipped.`], null, null, true, slot);
       continue;
     }
-    processFile(file);
+    processFile(file, slot);
   }
 }
 

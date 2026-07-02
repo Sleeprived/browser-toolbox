@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Timestamp &amp; UUID — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Timestamp &amp; UUID</h1>
+    <p class="lead">Convert Unix timestamps to readable dates and back, and generate or inspect UUIDs. Everything happens in your browser.</p>
+
+    <div class="card">
+      <h2>Epoch &#8594; date</h2>
+      <div class="row">
+        <div>
+          <label for="ts-epoch">Unix timestamp (seconds or milliseconds &mdash; detected automatically)</label>
+          <input type="text" id="ts-epoch" class="mono" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="e.g. 1700000000" />
+        </div>
+        <div class="btn-row">
+          <button class="btn" type="button" id="ts-now">Now</button>
+        </div>
+      </div>
+      <p id="ts-error" class="msg error hidden" role="alert"></p>
+      <dl class="read-fields hidden" id="ts-out">
+        <dt>Read as</dt><dd id="ts-unit"></dd>
+        <dt>Local</dt><dd id="ts-local"></dd>
+        <dt>UTC</dt><dd id="ts-utc"></dd>
+        <dt>ISO 8601</dt><dd id="ts-iso" class="mono"></dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>Date &#8594; epoch</h2>
+      <label for="ts-date">Date and time (your local time zone)</label>
+      <input type="datetime-local" id="ts-date" step="1" />
+      <p id="ts-date-error" class="msg error hidden" role="alert"></p>
+      <dl class="read-fields hidden" id="ts-date-out">
+        <dt>Unix seconds</dt><dd id="ts-date-s" class="mono"></dd>
+        <dt>Unix milliseconds</dt><dd id="ts-date-ms" class="mono"></dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2>UUID</h2>
+      <div class="btn-row">
+        <button class="btn" type="button" id="uuid-gen">Generate v4 UUID</button>
+      </div>
+      <pre id="uuid-out" class="out mono hidden"></pre>
+      <label for="uuid-in">Inspect a UUID</label>
+      <input type="text" id="uuid-in" class="mono" autocomplete="off" spellcheck="false" placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000" />
+      <p id="uuid-error" class="msg error hidden" role="alert"></p>
+      <dl class="read-fields hidden" id="uuid-info">
+        <dt>Version</dt><dd id="uuid-version"></dd>
+        <dt>Variant</dt><dd id="uuid-variant"></dd>
+        <dt>Timestamp</dt><dd id="uuid-time"></dd>
+      </dl>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Conversions and UUIDs are computed entirely in your browser. Nothing is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/timestamp/timestamp-ui.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 **▶ Use it live: https://sleeprived.github.io/browser-toolbox/**
 
-Fifteen handy tools that run entirely in your web browser — no upload, no account,
+Nineteen handy tools that run entirely in your web browser — no upload, no account,
 no server, works offline. Open the link on a phone or desktop, or **Add to Home
 Screen** to install it like an app.
 
@@ -37,7 +37,8 @@ Screen** to install it like an app.
 - **Morse Code Studio** — translate text to and from International Morse Code,
   then play it as audio, download it as a WAV, flash it on screen, or vibrate it
   on supported phones. Adjustable speed (with Farnsworth) and tone. Or go the
-  other way: tap what you hear (keyboard or touch pad) and read it as text.
+  other way: tap what you hear (keyboard or touch pad) — or let the microphone
+  listen and decode a tone live (analyzed in memory only, never recorded).
 - **Cipher Studio** — encode and decode classic secret codes: **Tap Code** (the
   POW knock code), **Baconian**, **Pigpen**, and **Semaphore**. The visual codes
   render as glyph/flag diagrams (downloadable as SVG or PNG) and decode by
@@ -50,7 +51,18 @@ Screen** to install it like an app.
 - **Barcode Generator** — create linear barcodes: **Code 128** (any text or
   numbers), **EAN-13**, and **UPC-A** (retail, with the check digit computed or
   verified for you). Custom colors, size, and quiet zone; optional human-readable
-  text; download as PNG or SVG, or copy the image.
+  text; download as PNG or SVG, or copy the image. Also **reads** those same
+  formats back from an uploaded image — checksum-verified, decoded in your
+  browser, and honest when it can't decode cleanly.
+- **Text Diff** — compare two texts line by line, inline or side by side, with
+  changed words highlighted inside edited lines.
+- **Regex Tester** — try JavaScript regular expressions with live match
+  highlighting, numbered and named groups, and flags.
+- **Timestamp & UUID** — convert Unix timestamps (seconds or milliseconds,
+  detected automatically) to local/UTC/ISO and back; generate UUIDs (v4) and
+  inspect any UUID's version, variant, and embedded timestamp.
+- **Contrast Checker** — check two colors against the WCAG AA/AAA contrast
+  thresholds, with a live preview and pass/fail badges.
 
 ## Privacy
 Everything runs on your device. Nothing you type or drop is ever uploaded — no
@@ -79,9 +91,10 @@ understanding before you rely on it:
 
 ## Updates / Troubleshooting
 The app installs as a PWA and serves the cached build for offline use. After a
-new version is deployed, the cached build is shown first and the update is fetched
-in the background; you get the latest on the **next** load. If something looks
-out of date, just refresh once more.
+new version is deployed, the cached build is shown first and the update is
+fetched in the background; when it's ready, an **"Update ready" toast** appears —
+tap Refresh to switch immediately, or ignore it and you'll get the new version
+on the next load. If something looks out of date, just refresh once more.
 
 ## Credits
 Passphrase wordlist: [EFF Large Wordlist](https://www.eff.org/dice)

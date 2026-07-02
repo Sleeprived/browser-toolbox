@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Regex Tester — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Regex Tester</h1>
+    <p class="lead">Try a JavaScript regular expression against your own text: live match highlighting, groups, and flags. Nothing you type leaves the page.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="re-pattern">Pattern</label>
+          <input type="text" id="re-pattern" class="mono" autocomplete="off" spellcheck="false" placeholder="e.g. (\w+)@(\w+\.\w+)" />
+        </div>
+        <div>
+          <label for="re-flags">Flags</label>
+          <input type="text" id="re-flags" class="mono" autocomplete="off" spellcheck="false" value="g" placeholder="gimsuy" />
+        </div>
+      </div>
+      <p id="re-error" class="msg error hidden" role="alert"></p>
+      <label for="re-text">Test text</label>
+      <textarea id="re-text" class="mono" rows="8" spellcheck="false" placeholder="Paste text to match against"></textarea>
+      <p class="lead">Runs with the browser's own RegExp engine. Match listing is time-capped, but a single catastrophic-backtracking step happens inside the engine and cannot be interrupted &mdash; an extreme pattern on a long text can still stall this tab (only this tab, and only until it finishes).</p>
+    </div>
+
+    <div id="re-summary" class="msg note hidden" role="status"></div>
+
+    <div id="re-result" class="card hidden">
+      <h2>Highlighted text</h2>
+      <pre class="out" id="re-highlight"></pre>
+      <h2>Matches</h2>
+      <div id="re-matches"></div>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Patterns and text are evaluated entirely in your browser. Nothing is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/regex/regex-ui.js"></script>
+</body>
+</html>

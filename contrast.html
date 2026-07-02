@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'self'; form-action 'none'" />
+  <meta name="theme-color" content="#15171c" />
+  <title>Contrast Checker — Browser Toolbox</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/img/icon-192.png" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="bar">
+      <a class="home" href="index.html">&#8592; Browser Toolbox</a>
+    </div>
+  </header>
+
+  <main id="main" class="wrap">
+    <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
+    <h1>Contrast Checker</h1>
+    <p class="lead">Check two colors against the WCAG&nbsp;2 contrast thresholds for accessible text. Computed entirely in your browser.</p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="ct-fg-hex">Text color</label>
+          <div class="color-pair">
+            <input type="color" id="ct-fg-pick" value="#1c1e24" aria-label="Pick text color" />
+            <input type="text" id="ct-fg-hex" class="mono" autocomplete="off" spellcheck="false" value="#1c1e24" />
+          </div>
+        </div>
+        <div>
+          <label for="ct-bg-hex">Background color</label>
+          <div class="color-pair">
+            <input type="color" id="ct-bg-pick" value="#ffffff" aria-label="Pick background color" />
+            <input type="text" id="ct-bg-hex" class="mono" autocomplete="off" spellcheck="false" value="#ffffff" />
+          </div>
+        </div>
+      </div>
+      <p id="ct-error" class="msg error hidden" role="alert"></p>
+    </div>
+
+    <div class="card">
+      <div id="ct-preview" class="ct-preview">
+        <p class="ct-preview-normal">Normal text looks like this.</p>
+        <p class="ct-preview-large">Large text looks like this.</p>
+      </div>
+      <p class="ratio-line">Contrast ratio: <strong id="ct-ratio" class="mono"></strong></p>
+      <dl class="read-fields" id="ct-badges">
+        <dt>AA normal text (&#8805; 4.5:1)</dt><dd id="ct-aa-normal"></dd>
+        <dt>AA large text (&#8805; 3:1)</dt><dd id="ct-aa-large"></dd>
+        <dt>AAA normal text (&#8805; 7:1)</dt><dd id="ct-aaa-normal"></dd>
+        <dt>AAA large text (&#8805; 4.5:1)</dt><dd id="ct-aaa-large"></dd>
+      </dl>
+      <p class="lead">"Large" means at least 24px, or 18.5px bold. Thresholds are WCAG&nbsp;2.1 success criteria 1.4.3 (AA) and 1.4.6 (AAA).</p>
+    </div>
+
+    <div class="privacy-note">
+      <span aria-hidden="true">&#128274;</span>
+      <span>Colors are evaluated entirely in your browser. Nothing is uploaded.</span>
+    </div>
+  </main>
+
+  <footer class="site-footer">Runs entirely in your browser &middot; no uploads</footer>
+
+  <script type="module" src="src/shared/page.js"></script>
+  <script type="module" src="src/contrast/contrast-ui.js"></script>
+</body>
+</html>

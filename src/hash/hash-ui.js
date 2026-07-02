@@ -20,6 +20,7 @@ const errorBox = document.getElementById('hash-error');
 
 let lastData = null; // Uint8Array currently being hashed
 let lastSource = ''; // human label of the source
+let gen = 0; // bumped per input/algo change; stale async digests and file reads are dropped
 
 function showError(msg) { errorBox.textContent = msg; errorBox.classList.remove('hidden'); }
 function clearError() { errorBox.classList.add('hidden'); }
@@ -46,14 +47,22 @@ function updateVerdict() {
 }
 
 async function recompute() {
+  // Capture the algorithm and a generation stamp up front: if the algorithm or
+  // input changes while the digest is in flight, this result is stale and must
+  // not be shown (it would be labeled with the wrong algorithm).
+  const my = ++gen;
+  const algo = algoSel.value;
   copied.classList.add('hidden');
   if (!lastData) { out.textContent = ''; sourceEl.textContent = ''; updateVerdict(); return; }
   if (!(globalThis.crypto && globalThis.crypto.subtle)) { showError('Hashing is not available in this browser.'); return; }
   try {
-    out.textContent = await digestHex(algoSel.value, lastData);
-    sourceEl.textContent = `${algoSel.value} of ${lastSource}`;
+    const hex = await digestHex(algo, lastData);
+    if (my !== gen) return; // superseded mid-compute
+    out.textContent = hex;
+    sourceEl.textContent = `${algo} of ${lastSource}`;
     clearError();
   } catch {
+    if (my !== gen) return;
     out.textContent = '';
     showError('Could not hash that input.');
   }
@@ -69,6 +78,11 @@ function setText() {
 
 function setFile(file) {
   if (!file) return;
+  // Stamp BEFORE validation: a rejected file must also supersede in-flight
+  // work, or an older read finishing late would overwrite the rejection error.
+  // The stamp also guards a slower file A finishing after file B was chosen (or
+  // after new text was typed) from clobbering the newer input.
+  const my = ++gen;
   if (file.size > MAX_FILE_BYTES) {
     showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit for in-browser hashing.`);
     clearResult();
@@ -76,13 +90,14 @@ function setFile(file) {
   }
   const reader = new FileReader();
   reader.onload = () => {
+    if (my !== gen) return; // superseded by a newer input
     lastData = new Uint8Array(reader.result);
     lastSource = `"${file.name}" (${(file.size / 1024).toFixed(0)} KB)`;
     textInput.value = '';
     clearError();
     recompute();
   };
-  reader.onerror = () => { showError('Could not read that file.'); clearResult(); };
+  reader.onerror = () => { if (my !== gen) return; showError('Could not read that file.'); clearResult(); };
   reader.readAsArrayBuffer(file);
 }
 

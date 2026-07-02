@@ -1,5 +1,142 @@
 # Changelog
 
+## 2026-07-02 — Audit fixes (pre-release hardening for v1.11.0, round 2)
+
+### Fixed
+- **Text Diff:** comparing one line against a few hundred thousand no longer
+  throws (the changed region was spread as function arguments, overflowing the
+  engine's argument limit); a first change-group bigger than the render cap now
+  shows its first ~20,000 lines instead of an empty card under a "showing the
+  first lines" message; and lines are interned before the LCS pass so crafted
+  near-identical long lines can't stall the tab for seconds.
+- **Contrast Checker:** a browser restoring an invalid value into a hex field
+  no longer breaks the page at load — the picker's color is used until the
+  field is fixed.
+- **Timestamp & UUID:** an unparseable date-and-time value shows an inline
+  "not a valid" message instead of silently hiding the output.
+- **Morse Code Studio:** a discarded stale microphone grant no longer
+  re-enables Start while a newer session is listening; if mic permission is
+  revoked from the browser's address bar mid-session, listening now stops
+  instead of showing a live indicator over a dead mic; and the tap-key rebind
+  no longer accepts Tab or a bare modifier key as the new tap key.
+- **Color Palette:** rejecting a wrong-type or oversized file now releases the
+  superseded in-flight image's memory.
+- **Hash & Checksum Verifier:** a digest pasted with internal line wrapping
+  (e.g. a SHA-512 copied from a wrapped terminal line) is rejoined instead of
+  being truncated to its first fragment and reported as a mismatch.
+- **Barcode & QR readers:** a dropped non-image file is refused immediately
+  instead of being fully read first; a GS1 (FNC1) barcode now disables
+  "Recreate in the generator" with an explanation (the generator would emit a
+  plain Code 128 that fails GS1 verification); and ASCII control characters in
+  decoded Code 128 text are displayed as visible ␀-style symbols instead of
+  rendering invisibly.
+
+## 2026-07-01 — Review fixes (pre-release hardening for v1.11.0)
+
+### Fixed
+- **Morse listen mode:** double-clicking Start while the permission prompt was
+  open could leave a second, orphaned microphone capture running that Stop
+  could never release; Start is now disabled immediately and a second start is
+  refused. Stopping or hiding the page while the prompt was open also no
+  longer lets the mic go live afterwards — the freshly granted stream is
+  stopped on the spot. A failed audio-context resume no longer surfaces as an
+  unhandled rejection.
+- **Barcode reader:** long Code 128 barcodes now decode all the way to the
+  generator's own 120-character maximum (a too-strict internal cap failed
+  anything past 63 characters). Code 128 symbols using FNC4 (extended ASCII)
+  are refused honestly instead of being decoded to confidently wrong text.
+  GS1 FNC1 separators are now called out in the result, an empty barcode gets
+  an accurate "no data to recreate" note, and re-choosing the same file
+  re-runs the decode (same fix in the QR reader).
+- **Image Resizer:** a slow encode finishing after a newer image was chosen
+  can no longer bring back the previous image's preview and download.
+- **Text Diff:** long unchanged stretches now fold into a "N unchanged lines"
+  marker and the rendered output is capped, so comparing two huge
+  nearly-identical texts can no longer lock the tab.
+- **Regex Tester:** matching waits for a pause in typing instead of running a
+  half-typed pattern against the full test text on every keystroke. Empty
+  matches step over full characters under the `u`/`v` flags instead of
+  landing inside a surrogate pair.
+- **File pickers** (hash, QR reader, barcode reader, palette, resizer):
+  rejecting an oversized or wrong-type file now also cancels the previous
+  in-flight load, so a late result can no longer overwrite the rejection
+  message. The palette tool releases its image URL on failed loads.
+- **Hash & Checksum Verifier:** pasted labels like `sha3-256:`,
+  `sha512/256:`, `sha256sum =`, and BSD `SHA256 (file) =` are now understood,
+  and pasting a whole checker line (`<digest>  file.iso`) ignores the
+  filename instead of folding its letters into the comparison.
+- **Timestamp & UUID:** braces around a UUID are only stripped as a balanced
+  pair (`{uuid` is invalid), pre-1970 v1 UUID timestamps round correctly, and
+  a missing Web Crypto now raises a clear error instead of a cryptic one.
+- **Contrast Checker:** an invalid-hex error now stays visible until the bad
+  field itself is fixed, instead of being cleared by editing the other field.
+- **Home page & updates:** the "no tools match" message is announced to
+  screen readers; a first-visit tab now also gets the "update ready" toast
+  for a deploy that happens during its session; the EXIF "Clear all" button
+  no longer reappears over an empty list when files were still processing;
+  the service worker no longer stores duplicate per-query copies of a page.
+
+### Changed
+- Contrast Checker ratios are now floored rather than rounded (e.g. #777 on
+  white shows 4.47:1, not 4.48:1) so the displayed value can never overstate
+  the measured contrast next to a Fail badge.
+
+## 2026-07-01 — v1.11.0 — Barcode reader, four new tools, toolbox UX
+
+### Added
+- **Barcode Generator — Read tab.** Upload a photo or screenshot of a Code 128,
+  EAN-13, or UPC-A barcode and read it back — decoded entirely in the page with
+  a hand-rolled decoder (no new dependencies). Every result is checksum-verified
+  before it is shown; if the image can't be decoded cleanly, the tool says so
+  honestly instead of guessing. A decoded barcode offers one-click "Recreate"
+  which fills the Create tab. If the image turns out to contain a QR code, the
+  tool points to the QR reader — and the QR reader now returns the favor for
+  linear barcodes.
+- **Text Diff** (`diff.html`): compare two texts line by line, inline or side
+  by side, with changed words highlighted inside edited lines. Size-capped so a
+  huge paste can't freeze the tab.
+- **Regex Tester** (`regex.html`): live JavaScript regex matching with match
+  highlighting, numbered and named groups, and flag validation. Match listing
+  is capped and time-budgeted, with an honest note about what a cap cannot
+  prevent (catastrophic backtracking happens inside the engine).
+- **Timestamp & UUID** (`timestamp.html`): Unix epoch → local/UTC/ISO with
+  automatic seconds-vs-milliseconds detection, date → epoch both ways, a Now
+  button, crypto-random UUID v4 generation, and a UUID inspector (version,
+  variant, embedded timestamp for v1/v7).
+- **Contrast Checker** (`contrast.html`): two color pickers with synced hex
+  fields, live preview, contrast ratio to two decimals, and pass/fail badges
+  for WCAG AA/AAA at normal and large text sizes.
+- **Find a tool.** The home page has a search box that filters the tool tiles
+  as you type (Escape clears it).
+- **Update ready toast.** When a new version of the toolbox has been fetched in
+  the background, a toast offers "Refresh" to switch to it immediately — no
+  more being silently one load behind.
+- **Morse Code Studio — listen mode.** Point the microphone at a Morse
+  transmission and it is decoded live: a band-filtered tone detector feeds the
+  same adaptive keyer as tap mode. Audio is analyzed in memory only — never
+  recorded, never uploaded — and the mic is fully released on Stop or when the
+  page is hidden.
+- **Morse playback progress bar** while audio, flash, or vibration is playing.
+
+### Fixed
+- Hash & Checksum Verifier now accepts pasted checksums with a `sha256:`-style
+  prefix (as copied from many release pages).
+- EXIF Cleaner results now always render in the order files were chosen, even
+  when they finish processing out of order.
+- The Morse tap-key rebind prompt can be canceled by clicking it again, and
+  says so.
+- Vault: pressing Enter in the master-password field unlocks (when the button
+  is enabled), the envelope validator refuses vault files with a weakened
+  key-derivation iteration count, and the QR risk checker recognizes decimal
+  and hex single-number IPv4 hosts.
+- Download helpers across five tools now delay revoking object URLs so slow
+  devices can't lose a download; image-loading tools guard against a stale
+  result landing after a newer file was picked.
+
+### Changed
+- Service worker cache bumped to v23; the new pages and modules are precached
+  for offline use.
+
 ## 2026-07-01 — v1.10.1 — Review fixes across five tools
 
 ### Fixed

@@ -22,6 +22,7 @@ const infoBox = document.getElementById('palette-info');
 let palette = [];
 let currentUrl = null;
 let lastPixels = null; // cached [r,g,b] pixels of the current image (decode once)
+let loadGen = 0; // bumped per load; stale async onload/onerror results are dropped
 
 function showInfo(msg) { infoBox.textContent = msg; infoBox.classList.remove('hidden'); }
 function clearInfo() { infoBox.classList.add('hidden'); }
@@ -129,12 +130,21 @@ function showExport(fmt) {
 }
 
 function loadFile(file) {
-  if (!file.type.startsWith('image/')) {
-    showError('Please choose an image file.');
-    return;
-  }
-  if (file.size > MAX_FILE_BYTES) {
-    showError(`That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
+  // Bump BEFORE validation: a rejected file must also supersede in-flight
+  // work, or an older load finishing late would overwrite the rejection error.
+  // The guard also stops a slow decode finishing after a newer file was chosen
+  // from pairing image A's swatches with image B's preview (last-write-wins).
+  const gen = ++loadGen;
+  if (!file.type.startsWith('image/') || file.size > MAX_FILE_BYTES) {
+    // Release the URL now: a superseded in-flight load returns at its gen
+    // check BEFORE its own revoke line, so it would leak the blob URL.
+    if (currentUrl) {
+      URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
+    }
+    showError(!file.type.startsWith('image/')
+      ? 'Please choose an image file.'
+      : `That file is ${(file.size / 1048576).toFixed(1)} MB — over the 25 MB limit.`);
     return;
   }
   if (currentUrl) URL.revokeObjectURL(currentUrl);
@@ -144,17 +154,25 @@ function loadFile(file) {
   lastPixels = null;
   const img = new Image();
   img.onload = () => {
+    if (gen !== loadGen) return; // superseded by a newer file
     // Bound decode-bomb memory: only show the preview and process once the
     // dimensions are known to be sane.
     if (img.naturalWidth * img.naturalHeight > MAX_IMAGE_PIXELS) {
       previewImg.removeAttribute('src');
+      URL.revokeObjectURL(currentUrl);
+      currentUrl = null;
       showError(`That image is ${img.naturalWidth}×${img.naturalHeight} — too large to process safely.`);
       return;
     }
     previewImg.src = currentUrl;
     extractFromImage(img);
   };
-  img.onerror = () => showError('Could not load that image.');
+  img.onerror = () => {
+    if (gen !== loadGen) return; // superseded — the newer load owns currentUrl now
+    URL.revokeObjectURL(currentUrl);
+    currentUrl = null;
+    showError('Could not load that image.');
+  };
   img.src = currentUrl;
 }
 
