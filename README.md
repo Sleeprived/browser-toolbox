@@ -26,8 +26,8 @@ Screen** to install it like an app.
   convert to JSON and back.
 - **Color Palette Extractor** — pull the dominant colors from an image; export as
   hex, CSS variables, or JSON.
-- **Cron Explainer** — translate a cron schedule into plain English and preview
-  its next run times.
+- **Cron Explainer** — translate a cron schedule into plain English, decode each
+  field, see a weekday × hour firing heatmap, and preview the next run times.
 - **Encode / Decode Multitool** — convert text to and from Base64, Hex, URL
   encoding, HTML entities, and Binary.
 - **JWT Decoder** — decode and inspect JSON Web Tokens, with optional HS256/384/512

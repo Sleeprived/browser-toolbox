@@ -8,8 +8,10 @@ export class CronError extends Error {}
 const DOW_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const MON_NAMES = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 const WEEKDAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
   'August', 'September', 'October', 'November', 'December'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const NICKNAMES = {
   '@yearly': '0 0 1 1 *',
@@ -128,6 +130,19 @@ export function parseCron(expr) {
   };
 }
 
+// Does a given UTC day satisfy the cron's day fields? Implements Vixie's OR rule:
+// when BOTH day-of-month and day-of-week are restricted, the day matches if either
+// does. Shared by nextRuns (time search) and weeklyHeatmap (cadence grid).
+function dayMatches(cron, d) {
+  if (!cron.month.values.has(d.getUTCMonth() + 1)) return false;
+  const domMatch = cron.dom.values.has(d.getUTCDate());
+  const dowMatch = cron.dow.values.has(d.getUTCDay());
+  if (cron.domRestricted && cron.dowRestricted) return domMatch || dowMatch;
+  if (cron.domRestricted) return domMatch;
+  if (cron.dowRestricted) return dowMatch;
+  return true;
+}
+
 // Compute the next `count` run times strictly after `from` (a Date or ms),
 // in UTC. Returns an array of Date objects (UTC instants).
 export function nextRuns(cronOrExpr, from = new Date(), count = 5) {
@@ -147,16 +162,6 @@ export function nextRuns(cronOrExpr, from = new Date(), count = 5) {
 
   // Day-then-time search: skip whole non-matching days instead of scanning every
   // minute of multi-year gaps. Keeps the Feb-29 / rare-schedule cases correct and fast.
-  const dayMatches = (d) => {
-    if (!cron.month.values.has(d.getUTCMonth() + 1)) return false;
-    const domMatch = cron.dom.values.has(d.getUTCDate());
-    const dowMatch = cron.dow.values.has(d.getUTCDay());
-    if (cron.domRestricted && cron.dowRestricted) return domMatch || dowMatch;
-    if (cron.domRestricted) return domMatch;
-    if (cron.dowRestricted) return dowMatch;
-    return true;
-  };
-
   const minutes = [...cron.minute.values].sort((a, b) => a - b);
   const hours = [...cron.hour.values].sort((a, b) => a - b);
 
@@ -167,7 +172,7 @@ export function nextRuns(cronOrExpr, from = new Date(), count = 5) {
   let dayCount = 0;
 
   while (runs.length < count && dayCount < maxDays) {
-    if (dayMatches(cursor)) {
+    if (dayMatches(cron, cursor)) {
       const y = cursor.getUTCFullYear();
       const mo = cursor.getUTCMonth();
       const da = cursor.getUTCDate();
@@ -185,6 +190,36 @@ export function nextRuns(cronOrExpr, from = new Date(), count = 5) {
     dayCount++;
   }
   return runs;
+}
+
+// Build a weekday x hour cadence grid for the next `weeks` weeks (UTC), starting
+// at 00:00 of the from-day. counts[weekday][hour] is the number of times the job
+// fires in that slot over the window (matching days x minutes-per-hour), giving the
+// heatmap its intensity. `anyFires` is false for schedules too rare to land in the
+// window (e.g. a yearly job seen mid-year) — the caller falls back to the run list.
+export function weeklyHeatmap(cronOrExpr, from = new Date(), weeks = 5) {
+  const cron = typeof cronOrExpr === 'string' ? parseCron(cronOrExpr) : cronOrExpr;
+  const fromMs = from instanceof Date ? from.getTime() : Number(from);
+  const f = new Date(fromMs);
+
+  const counts = Array.from({ length: 7 }, () => new Array(24).fill(0));
+  const hours = [...cron.hour.values];
+  const minutesPerHour = cron.minute.values.size;
+  const totalDays = weeks * 7;
+
+  let cursor = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth(), f.getUTCDate()));
+  let max = 0;
+  for (let i = 0; i < totalDays; i++) {
+    if (dayMatches(cron, cursor)) {
+      const w = cursor.getUTCDay();
+      for (const h of hours) {
+        counts[w][h] += minutesPerHour;
+        if (counts[w][h] > max) max = counts[w][h];
+      }
+    }
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth(), cursor.getUTCDate() + 1));
+  }
+  return { weeks, totalDays, counts, max, anyFires: max > 0 };
 }
 
 // ---- Plain-English description ----------------------------------------------
@@ -288,4 +323,47 @@ export function describeCron(cronOrExpr) {
   let sentence = parts.join(', ');
   sentence = sentence.charAt(0).toUpperCase() + sentence.slice(1) + '.';
   return sentence;
+}
+
+// ---- Per-field breakdown ----------------------------------------------------
+
+// Render a set of values compactly, collapsing a run of >=3 consecutive numbers
+// into a "start–end" range (matching the prose describer's convention) and naming
+// them when a name function is supplied (e.g. weekday/month).
+function compactValues(values, nameFn = String) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const out = [];
+  let i = 0;
+  while (i < sorted.length) {
+    let j = i;
+    while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j++;
+    if (j - i + 1 >= 3) {
+      out.push(`${nameFn(sorted[i])}–${nameFn(sorted[j])}`);
+    } else {
+      for (let k = i; k <= j; k++) out.push(nameFn(sorted[k]));
+    }
+    i = j + 1;
+  }
+  return out.join(', ');
+}
+
+function summarizeField(field, nameFn) {
+  if (field.all) return 'every value';
+  return compactValues(field.values, nameFn);
+}
+
+// Decode an expression into its five fields for a labeled, position-by-position
+// breakdown in the UI: each entry carries the field label, its legal range, the
+// raw token the user wrote, and a resolved plain-text summary of the values.
+export function fieldSummaries(cronOrExpr) {
+  const cron = typeof cronOrExpr === 'string' ? parseCron(cronOrExpr) : cronOrExpr;
+  const dow = (v) => WEEKDAY_SHORT[v];
+  const mon = (v) => MONTH_SHORT[v - 1];
+  return [
+    { key: 'minute', label: 'Minute', range: '0–59', raw: cron.minute.raw, all: cron.minute.all, display: summarizeField(cron.minute) },
+    { key: 'hour', label: 'Hour', range: '0–23', raw: cron.hour.raw, all: cron.hour.all, display: summarizeField(cron.hour) },
+    { key: 'dom', label: 'Day of month', range: '1–31', raw: cron.dom.raw, all: cron.dom.all, display: summarizeField(cron.dom) },
+    { key: 'month', label: 'Month', range: '1–12', raw: cron.month.raw, all: cron.month.all, display: summarizeField(cron.month, mon) },
+    { key: 'dow', label: 'Day of week', range: '0–6 (Sun–Sat)', raw: cron.dow.raw, all: cron.dow.all, display: summarizeField(cron.dow, dow) },
+  ];
 }

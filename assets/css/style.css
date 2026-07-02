@@ -250,6 +250,45 @@ footer.site-footer a { color: var(--accent); }
 .next-runs { list-style: none; padding: 0; }
 .next-runs li { font-family: ui-monospace, monospace; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
 
+/* ---- Cron Explainer: field breakdown ---- */
+.cron-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+.cron-field {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.cron-field.is-any { opacity: 0.78; }
+.cron-field .cf-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); }
+.cron-field .cf-raw { font-size: 1.1rem; color: var(--accent); margin: 3px 0; word-break: break-all; }
+.cron-field .cf-val { font-size: 0.88rem; color: var(--text); }
+.cron-field .cf-range { font-size: 0.7rem; color: var(--text-dim); margin-top: 5px; }
+
+/* ---- Cron Explainer: weekday x hour heatmap ---- */
+.heatmap-wrap { overflow-x: auto; margin: 4px 0; padding-bottom: 4px; }
+.heatmap {
+  display: grid;
+  grid-template-columns: auto repeat(24, 16px);
+  gap: 2px;
+  width: max-content;
+  align-items: center;
+}
+.heatmap .hm-hour { font-size: 0.6rem; color: var(--text-dim); text-align: center; height: 14px; line-height: 14px; }
+.heatmap .hm-day { font-size: 0.72rem; color: var(--text-dim); padding-right: 8px; text-align: right; white-space: nowrap; }
+.heatmap .hm-cell { width: 16px; height: 16px; border-radius: 3px; background: var(--surface-2); }
+.heatmap-note { font-size: 0.82rem; margin-top: 6px; }
+
+/* ---- Cron Explainer: syntax cheat-sheet ---- */
+.cron-cheat summary { font-weight: 600; }
+.cheat-list { margin: 12px 0; padding-left: 20px; color: var(--text-dim); font-size: 0.9rem; }
+.cheat-list li { margin: 4px 0; }
+.cron-cheat code { color: var(--text); }
+
 .skip-link {
   position: absolute;
   left: -999px;

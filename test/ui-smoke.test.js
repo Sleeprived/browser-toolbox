@@ -38,6 +38,27 @@ describe('cron UI', () => {
     input.dispatchEvent(new window.Event('input'));
     expect(document.getElementById('error').classList.contains('hidden')).toBe(false);
   });
+
+  it('renders five field-breakdown cards and a heatmap for a weekly schedule', async () => {
+    loadBody('cron.html');
+    await import('../src/cron/cron-ui.js'); // default expr fires every week, so the grid always shows
+    expect(document.querySelectorAll('#fields .cron-field').length).toBe(5);
+    expect(document.querySelector('#heatmap-wrap .heatmap')).not.toBeNull();
+    expect(document.getElementById('heatmap-note').textContent).toMatch(/across the next 5 weeks/);
+  });
+
+  it('surfaces the dom/dow OR warning only when both day fields are restricted', async () => {
+    loadBody('cron.html');
+    await import('../src/cron/cron-ui.js');
+    const warn = document.getElementById('dow-warning');
+    expect(warn.classList.contains('hidden')).toBe(true); // default "0 9 * * 1-5" — dow only
+
+    const input = document.getElementById('expr');
+    input.value = '0 0 13 * 5';
+    input.dispatchEvent(new window.Event('input'));
+    expect(warn.classList.contains('hidden')).toBe(false);
+    expect(warn.textContent).toMatch(/OR, not AND/);
+  });
 });
 
 describe('passphrase UI', () => {

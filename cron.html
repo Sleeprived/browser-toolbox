@@ -30,6 +30,7 @@
         <button class="btn secondary" type="button" data-ex="*/15 * * * *">*/15 * * * *</button>
         <button class="btn secondary" type="button" data-ex="0 0 1 * *">0 0 1 * *</button>
         <button class="btn secondary" type="button" data-ex="30 8 * * 1-5">30 8 * * 1-5</button>
+        <button class="btn secondary" type="button" data-ex="0 0 13 * 5">0 0 13 * 5</button>
         <button class="btn secondary" type="button" data-ex="@hourly">@hourly</button>
       </div>
     </div>
@@ -39,9 +40,45 @@
     <div id="result" class="card hidden">
       <h2>In plain English</h2>
       <p id="description" class="lead" aria-live="polite"></p>
+
+      <h2>Field breakdown</h2>
+      <div id="fields" class="cron-fields" aria-live="polite"></div>
+
+      <div id="dow-warning" class="msg warn hidden"></div>
+
+      <h2>When it fires <span class="lead">(next 5 weeks, UTC)</span></h2>
+      <div id="heatmap-wrap" class="heatmap-wrap"></div>
+      <p id="heatmap-note" class="lead heatmap-note" aria-live="polite"></p>
+
       <h2>Next 5 runs <span id="tzlabel" class="lead"></span></h2>
       <ul id="next-runs" class="next-runs" aria-live="polite"></ul>
     </div>
+
+    <details class="card cron-cheat">
+      <summary>Cron syntax reference &amp; tips</summary>
+      <p class="lead">A cron expression has five space-separated fields. Each field accepts the same operators:</p>
+      <div class="table-scroll">
+        <table class="data">
+          <thead><tr><th>Field</th><th>Allowed</th><th>Names</th></tr></thead>
+          <tbody>
+            <tr><td>Minute</td><td>0–59</td><td>—</td></tr>
+            <tr><td>Hour</td><td>0–23</td><td>—</td></tr>
+            <tr><td>Day of month</td><td>1–31</td><td>—</td></tr>
+            <tr><td>Month</td><td>1–12</td><td><code>jan</code>–<code>dec</code></td></tr>
+            <tr><td>Day of week</td><td>0–7</td><td><code>sun</code>–<code>sat</code> (0 &amp; 7 = Sunday)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul class="cheat-list">
+        <li><code>*</code> — every value</li>
+        <li><code>,</code> — a list, e.g. <code>1,15,30</code></li>
+        <li><code>-</code> — a range, e.g. <code>1-5</code> (Mon–Fri)</li>
+        <li><code>/</code> — a step, e.g. <code>*/15</code> (every 15) or <code>9-17/2</code></li>
+        <li>Nicknames: <code>@yearly</code> <code>@monthly</code> <code>@weekly</code> <code>@daily</code> <code>@hourly</code></li>
+      </ul>
+      <p class="lead"><strong>Good to know.</strong> When you set <em>both</em> day-of-month and day-of-week, cron runs when <em>either</em> matches (not both). Cron's finest resolution is one minute, and it does not back-fill runs missed while a machine is asleep.</p>
+      <p class="lead">Note: extended syntax from other schedulers — <code>L</code> (last day), <code>W</code> (nearest weekday), <code>#</code> (nth weekday), and a leading seconds field — is not part of standard cron and isn't parsed here.</p>
+    </details>
 
     <div class="privacy-note">
       <span aria-hidden="true">&#128274;</span>

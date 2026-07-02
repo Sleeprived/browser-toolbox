@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-07-02 — v1.13.0
+
+### Added
+- **Cron Explainer** (contributed by @MonPlon in PR #1, adapted onto the
+  current release):
+  - **Field breakdown** — the expression is decoded into five labeled cards
+    (Minute, Hour, Day-of-month, Month, Day-of-week), each showing the raw
+    token, its legal range, and a resolved plain-text summary (weekday/month
+    names, runs of three or more collapsed into ranges).
+  - **Firing heatmap** — a weekday × hour grid over the next five weeks (UTC)
+    lights the slots the job runs in, with intensity scaled by frequency.
+    Schedules too rare to land in the window fall back to the next-run list
+    with a note.
+  - **OR-rule warning** — when both the day-of-month and day-of-week fields
+    are restricted, a callout explains cron's OR (not AND) semantics — the
+    most common cron footgun.
+  - **Syntax reference** — a collapsible cheat-sheet covering the five
+    fields, the `* , - /` operators, nicknames, the one-minute floor, the
+    no-back-fill behavior, and a note that extended `L`/`W`/`#`/seconds
+    syntax is non-standard and not parsed here.
+
 ## 2026-07-02 — v1.12.0
 
 ### Changed

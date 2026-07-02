@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCron, nextRuns, describeCron, CronError } from '../src/cron/cron.js';
+import { parseCron, nextRuns, describeCron, fieldSummaries, weeklyHeatmap, CronError } from '../src/cron/cron.js';
 
 describe('parseCron', () => {
   it('parses a standard 5-field expression', () => {
@@ -155,5 +155,65 @@ describe('nextRuns (UTC, deterministic)', () => {
     const start = Date.now();
     nextRuns('0 12 29 2 *', new Date('2026-01-01T00:00:00Z'), 5);
     expect(Date.now() - start).toBeLessThan(500);
+  });
+});
+
+describe('fieldSummaries', () => {
+  it('labels the five fields with their raw token and resolved values', () => {
+    const s = fieldSummaries('0 9 * * 1-5');
+    expect(s.map((f) => f.label)).toEqual(['Minute', 'Hour', 'Day of month', 'Month', 'Day of week']);
+    expect(s[0]).toMatchObject({ raw: '0', all: false, display: '0' });
+    expect(s[1]).toMatchObject({ raw: '9', display: '9' });
+    expect(s[2]).toMatchObject({ raw: '*', all: true, display: 'every value' });
+    expect(s[4]).toMatchObject({ raw: '1-5', display: 'Mon–Fri' });
+  });
+
+  it('names months and collapses runs of >=3 into ranges, listing shorter runs', () => {
+    const s = fieldSummaries('*/15 0 1,15 jan,feb,mar *');
+    expect(s[0].display).toBe('0, 15, 30, 45'); // step expands to a non-consecutive list
+    expect(s[2].display).toBe('1, 15');         // 2 values: listed, not ranged
+    expect(s[3].display).toBe('Jan–Mar');       // 3 consecutive months: a range, named
+  });
+
+  it('shows the raw token verbatim even when weekday 7 normalizes to Sunday', () => {
+    const dow = fieldSummaries('0 0 * * 7')[4];
+    expect(dow.raw).toBe('7');
+    expect(dow.display).toBe('Sun');
+  });
+});
+
+describe('weeklyHeatmap (UTC cadence grid)', () => {
+  it('lights only the matching weekday/hour slots for a weekday-morning job', () => {
+    const grid = weeklyHeatmap('0 9 * * 1-5', new Date('2026-06-01T00:00:00Z'), 1); // Mon start
+    expect(grid.anyFires).toBe(true);
+    for (let w = 0; w < 7; w++) {
+      for (let h = 0; h < 24; h++) {
+        const lit = grid.counts[w][h] > 0;
+        expect(lit).toBe(w >= 1 && w <= 5 && h === 9); // Mon–Fri at 09:00 only
+      }
+    }
+  });
+
+  it('scales cell intensity by minutes-per-hour', () => {
+    const grid = weeklyHeatmap('*/15 0 * * *', new Date('2026-06-01T00:00:00Z'), 1);
+    // Every day fires at hour 0, four times (00,15,30,45). One week => 7 days.
+    expect(grid.counts[0][0]).toBe(4);
+    expect(grid.max).toBe(4);
+  });
+
+  it('reports anyFires=false for a schedule that never lands in the window', () => {
+    const grid = weeklyHeatmap('0 0 1 1 *', new Date('2026-06-01T00:00:00Z'), 5); // yearly, mid-year
+    expect(grid.anyFires).toBe(false);
+    expect(grid.max).toBe(0);
+  });
+
+  it('honors the dom/dow OR rule when both day fields are set', () => {
+    // 13th of the month OR any Friday, at midnight. Window covers a Friday and a 13th.
+    const grid = weeklyHeatmap('0 0 13 * 5', new Date('2026-06-01T00:00:00Z'), 3);
+    expect(grid.anyFires).toBe(true);
+    // All fires are at hour 0.
+    for (let w = 0; w < 7; w++) {
+      for (let h = 1; h < 24; h++) expect(grid.counts[w][h]).toBe(0);
+    }
   });
 });
