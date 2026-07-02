@@ -19,6 +19,7 @@ const padBtn = $('tap-pad');
 const listenBtn = $('tap-listen');
 const keyBtn = $('tap-key-change');
 const undoBtn = $('tap-undo');
+const clearBtn = $('tap-clear');
 const wpmEl = $('tap-wpm');
 const wpmVal = $('tap-wpm-val');
 const adaptedEl = $('tap-wpm-adapted');
@@ -58,6 +59,9 @@ function append(token) {
 const tapped = [];
 
 function renderTapView() {
+  // A stale cached page (SW stale-while-revalidate) may predate the mirror
+  // elements; the mirror is a nicety, keying must keep working without it.
+  if (!tapMorseEl || !tapOutEl) return;
   const morse = tapped.join(' ');
   const pending = keyer.pending();
   tapMorseEl.textContent = morse + (pending ? `${morse ? ' ' : ''}${pending}` : '');
@@ -199,6 +203,40 @@ undoBtn.addEventListener('click', () => {
   // drop it from the mirror too.
   if (tapped.length && tapped[tapped.length - 1] === removed) {
     tapped.pop();
+    renderTapView();
+  }
+});
+
+// Reset the tap mirror only — the taps already committed to the input stay.
+// Any letter still pending in the keyer is discarded with it. (Optional
+// chaining: the button may be absent on a stale cached page.)
+clearBtn?.addEventListener('click', () => {
+  clearFlushTimer();
+  keyer.finish(); // result ignored: discard, don't commit
+  tapped.length = 0;
+  renderTapView();
+});
+
+// Abandon an in-flight tap when the user switches away from decode: letting
+// the flush timer commit it later would append Morse into text that is about
+// to be ENCODED. (pressStart's own switch TO decode returns early here.)
+dirEl.addEventListener('change', () => {
+  if (dirEl.value === 'decode') return;
+  if (pressed) {
+    pressed = false;
+    player.stopTone();
+    padBtn.classList.remove('held');
+  }
+  clearFlushTimer();
+  keyer.finish(); // result ignored: discard, don't commit
+  renderTapView();
+});
+
+// An emptied input (Clear button, select-all + delete) is a fresh start — a
+// surviving tap transcript would show taps that are no longer anywhere.
+inEl.addEventListener('input', () => {
+  if (tapped.length && inEl.value.trim() === '') {
+    tapped.length = 0;
     renderTapView();
   }
 });

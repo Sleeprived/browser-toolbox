@@ -1,5 +1,28 @@
 # Changelog
 
+## 2026-07-02 — v1.11.2
+
+### Added
+- **Morse Code Studio:** a "Clear tapped" button resets the tap card's mirror
+  (taps already committed to the input stay), and a "Clear input & output"
+  button in the Output card wipes the whole translation in one click — outputs
+  now persist until cleared deliberately.
+
+### Fixed
+- **Morse Code Studio:** switching direction to "Text → Morse" right after a
+  tap no longer lets the pending letter sneak into the input as Morse a moment
+  later — the in-flight tap is discarded when leaving decode mode. Emptying
+  the input also resets the tap mirror, so it can't show taps that no longer
+  exist anywhere.
+- **Morse Code Studio (PWA update safety):** during a service-worker update,
+  the page and its modules can briefly come from different releases; v1.11.1's
+  renamed tap-card elements made a mixed pairing throw on the first tap and
+  wedge the pad until reload. The tap modules now tolerate missing elements
+  (keying always reaches the input), the page keeps a hidden legacy element
+  for one release so the previous cached module can't crash either, and a
+  regression test pins this. If tapping looks dead after an update, one
+  hard refresh (Ctrl+F5) picks up the fixed pair.
+
 ## 2026-07-02 — v1.11.1
 
 ### Changed

@@ -979,6 +979,31 @@ describe('morse tap keyer UI', () => {
     expect(inEl.value).toBe('... ');
   });
 
+  it('taps still commit when newer page elements are missing (stale cached HTML)', async () => {
+    // A PWA update can briefly pair a new module with the PREVIOUS page still
+    // in the SW cache (stale-while-revalidate). New elements are a nicety;
+    // keying must survive their absence — a first-tap throw leaves pressed
+    // wedged true and kills the pad until reload.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      for (const id of ['tap-morse', 'tap-out', 'tap-clear', 'morse-clear']) {
+        document.getElementById(id).remove();
+      }
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      vi.advanceTimersByTime(80);                    // short press = dot
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);                  // letter-gap flush timer
+      expect(document.getElementById('morse-in').value.trim()).toBe('.');
+      expect(document.getElementById('morse-out').textContent).toBe('E');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('Enter on the focused pad keys a dot (keyboard activation)', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {

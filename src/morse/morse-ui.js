@@ -10,6 +10,7 @@ const outEl = $('morse-out');
 const errorEl = $('morse-error');
 const skippedEl = $('morse-skipped');
 const copyBtn = $('morse-copy');
+const clearBtn = $('morse-clear');
 const copiedEl = $('morse-copied');
 
 const playBtn = $('morse-play');
@@ -164,6 +165,15 @@ vibrateBtn.addEventListener('click', () => {
   // Same as flash(): vibrate() stopAll()s audio without firing onEnd.
   setPlaying(false);
   stopProgress();
+});
+
+// The output is derived from the input, so clearing means clearing the input;
+// the dispatched 'input' event resets everything downstream (output, signal
+// state, and the tap card's transcript). (Optional chaining: the button may
+// be absent on a stale cached page.)
+clearBtn?.addEventListener('click', () => {
+  inEl.value = '';
+  inEl.dispatchEvent(new Event('input'));
 });
 
 copyBtn.addEventListener('click', async () => {

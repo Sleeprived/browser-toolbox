@@ -42,6 +42,7 @@
         <button class="btn secondary" type="button" id="tap-listen" aria-pressed="false">Start keyboard tapping</button>
         <button class="btn secondary" type="button" id="tap-key-change">Change key (now: Space)</button>
         <button class="btn secondary" type="button" id="tap-undo">Undo last letter</button>
+        <button class="btn secondary" type="button" id="tap-clear">Clear tapped</button>
       </div>
       <div class="row">
         <div>
@@ -55,6 +56,10 @@
       <p class="lead">You tapped: <span id="tap-morse" class="mono" aria-live="polite"></span></p>
       <p class="lead">Translation:</p>
       <pre class="out" id="tap-out" aria-live="polite"></pre>
+      <!-- Kept one release for update safety: a stale cached tap-ui.js
+           (pre-1.11.1) writes the pending letter here and throws without it,
+           wedging the pad. Remove after 1.12. -->
+      <span id="tap-pending" class="hidden" aria-hidden="true"></span>
     </div>
 
     <div class="card">
@@ -77,6 +82,7 @@
       <pre class="out" id="morse-out" aria-live="polite"></pre>
       <div class="btn-row">
         <button class="btn" type="button" id="morse-copy">Copy output</button>
+        <button class="btn secondary" type="button" id="morse-clear">Clear input &amp; output</button>
       </div>
       <p id="morse-copied" class="lead hidden" aria-live="polite"></p>
     </div>
