@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-07-02 — v1.11.1
+
+### Changed
+- **Morse Code Studio:** the "Tap it in" card now shows what you tapped and its
+  translation right in the card — no more scrolling between the tap pad and the
+  Output card. The mirror reflects only tokens actually keyed (plus the
+  in-progress letter), so pasted or hand-typed input is never presented as
+  taps; "Undo last letter" updates it too. The card's description is now a
+  plain how-to, and the separate "Tapping:" pending-letter line and
+  keyboard-capture note were folded into it.
+
 ## 2026-07-02 — Audit fixes (pre-release hardening for v1.11.0, round 2)
 
 ### Fixed

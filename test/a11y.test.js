@@ -14,7 +14,7 @@ describe('accessibility: dynamic regions are announced', () => {
     ['exif.html', ['id="results"', 'aria-live="polite"']],
     ['palette.html', ['id="error"', 'role="alert"']],
     ['vault.html', ['id="unlock-error"', 'role="alert"'], ['id="save-msg"', 'aria-live="polite"']],
-    ['morse.html', ['id="morse-error"', 'role="alert"'], ['id="morse-out"', 'aria-live="polite"'], ['id="tap-pending"', 'aria-live="polite"']],
+    ['morse.html', ['id="morse-error"', 'role="alert"'], ['id="morse-out"', 'aria-live="polite"'], ['id="tap-morse"', 'aria-live="polite"'], ['id="tap-out"', 'aria-live="polite"']],
     ['encode.html', ['id="enc-error"', 'role="alert"'], ['id="enc-out"', 'aria-live="polite"']],
     ['jwt.html', ['id="jwt-error"', 'role="alert"'], ['id="jwt-payload"', 'aria-live="polite"']],
     ['image.html', ['id="image-error"', 'role="alert"'], ['id="img-stats"', 'aria-live="polite"']],

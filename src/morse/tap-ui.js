@@ -6,6 +6,7 @@
 // existing decode pipeline in morse-ui.js does the rest.
 
 import { createKeyer } from './keyer.js';
+import { morseToText } from './morse.js';
 import * as player from './player.js';
 
 const $ = (id) => document.getElementById(id);
@@ -22,7 +23,8 @@ const wpmEl = $('tap-wpm');
 const wpmVal = $('tap-wpm-val');
 const adaptedEl = $('tap-wpm-adapted');
 const beepEl = $('tap-beep');
-const pendingEl = $('tap-pending');
+const tapMorseEl = $('tap-morse');
+const tapOutEl = $('tap-out');
 
 const keyer = createKeyer({ wpm: Number(wpmEl.value) });
 const now = () => Date.now();
@@ -49,10 +51,23 @@ function append(token) {
   inEl.dispatchEvent(new Event('input'));
 }
 
+// In-card mirror of what was actually TAPPED (committed tokens plus the
+// in-progress letter) and its translation, so nobody has to scroll to the
+// output while keying. Deliberately NOT a mirror of the input box: pasted or
+// hand-typed content must never be presented as the user's taps.
+const tapped = [];
+
+function renderTapView() {
+  const morse = tapped.join(' ');
+  const pending = keyer.pending();
+  tapMorseEl.textContent = morse + (pending ? `${morse ? ' ' : ''}${pending}` : '');
+  tapOutEl.textContent = morseToText(morse);
+}
+
 function applyResult({ committed, wordBreak = false }) {
-  if (wordBreak) append('/');
-  if (committed) append(committed);
-  pendingEl.textContent = keyer.pending();
+  if (wordBreak) { append('/'); tapped.push('/'); }
+  if (committed) { append(committed); tapped.push(committed); }
+  renderTapView();
 }
 
 function clearFlushTimer() {
@@ -80,7 +95,7 @@ function pressEnd() {
   player.stopTone();
   padBtn.classList.remove('held');
   keyer.up(now());
-  pendingEl.textContent = keyer.pending();
+  renderTapView();
   adaptedEl.textContent = ` — tapping at ~${Math.round(1200 / keyer.unitMs())} WPM`;
   clearFlushTimer();
   flushTimer = setTimeout(() => applyResult(keyer.flush(now())), 2 * keyer.unitMs() + 40);
@@ -177,9 +192,15 @@ padBtn.addEventListener('keyup', (e) => {
 undoBtn.addEventListener('click', () => {
   const tokens = inEl.value.trim().split(/\s+/).filter(Boolean);
   if (!tokens.length) return;
-  tokens.pop();
+  const removed = tokens.pop();
   inEl.value = tokens.length ? `${tokens.join(' ')} ` : '';
   inEl.dispatchEvent(new Event('input'));
+  // Keep the tap mirror honest: if the undone token was the last tapped one,
+  // drop it from the mirror too.
+  if (tapped.length && tapped[tapped.length - 1] === removed) {
+    tapped.pop();
+    renderTapView();
+  }
 });
 
 wpmEl.addEventListener('input', () => {

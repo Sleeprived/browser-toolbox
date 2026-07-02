@@ -36,7 +36,7 @@
 
     <div class="card">
       <h2>Tap it in</h2>
-      <p class="lead">Hear beeps, knocks, or flashes? Tap the rhythm and it is decoded live: short tap = dot, long tap = dash. Pause briefly to end a letter, pause longer to start a new word. Your taps land in the input above as Morse.</p>
+      <p class="lead">Tap the pad below &mdash; or turn on keyboard tapping and press the key: short tap = dot, long hold = dash. Pause briefly to end a letter, pause longer to start a new word. Press Esc to stop keyboard tapping. Your taps land in the input above as Morse.</p>
       <button class="btn tap-pad" type="button" id="tap-pad">Tap here &mdash; hold longer for a dash</button>
       <div class="btn-row">
         <button class="btn secondary" type="button" id="tap-listen" aria-pressed="false">Start keyboard tapping</button>
@@ -52,8 +52,9 @@
           <label for="tap-beep"><input type="checkbox" id="tap-beep" checked /> Beep while held</label>
         </div>
       </div>
-      <p class="lead">Tapping: <span id="tap-pending" class="mono" aria-live="polite"></span></p>
-      <p class="lead">The keyboard key is captured only while keyboard tapping is on &mdash; press Esc to stop. The pad above always works.</p>
+      <p class="lead">You tapped: <span id="tap-morse" class="mono" aria-live="polite"></span></p>
+      <p class="lead">Translation:</p>
+      <pre class="out" id="tap-out" aria-live="polite"></pre>
     </div>
 
     <div class="card">
