@@ -1,5 +1,33 @@
 # Changelog
 
+## 2026-07-02 — v1.12.0
+
+### Changed
+- **Morse Code Studio:** the translate area is now two side-by-side boxes —
+  Text and Morse — both editable, translating live in whichever direction
+  you type (suggested in issue #2). The Direction dropdown is gone: the box
+  you edit is the source and the other follows. Play/Stop, Copy text, Copy
+  Morse, and Clear sit directly under the boxes, so there is no scrolling
+  down to a separate output card.
+
+### Added
+- **Morse Code Studio:** the tap card has "Play tapped Morse"/Stop buttons,
+  so what you tapped can be heard right where you tapped it.
+
+### Fixed
+- **Morse Code Studio (mobile):** tapping the pad no longer scrolls the page
+  back to the top. The pad keeps pointer focus where it was, so an earlier
+  typing session could leave a text box focused — and every tap's
+  programmatic write then made mobile browsers scroll the focused box (at
+  the top of the page) into view, mid-tap. The pad now drops that focus on
+  press.
+- **Morse Code Studio:** a stray tap on the pad can no longer garble text
+  waiting to be encoded. Taps land in the Morse box as one extra letter, and
+  Undo (or deleting the tapped token) restores the text exactly. Previously
+  a tap silently flipped the direction and appended a Morse token into plain
+  text, and deleting the token didn't restore the direction — leaving the
+  output unreadable and Play silent.
+
 ## 2026-07-02 — v1.11.3
 
 ### Added

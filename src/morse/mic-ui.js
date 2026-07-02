@@ -5,10 +5,10 @@
 // recorded, stored, or transmitted; Stop (or hiding the page) releases the
 // microphone and closes the audio context.
 //
-// The live transcript is intentionally SEPARATE from the main input box:
-// writing into it would re-run update(), which stops all audio output — and the
-// headline use case is decoding this very page's own Play button through the
-// speakers.
+// The live transcript is intentionally SEPARATE from the translate panes:
+// writing into them would re-run the pane sync, which stops all audio output —
+// and the headline use case is decoding this very page's own Play button
+// through the speakers.
 
 import { createKeyer } from './keyer.js';
 import { morseToText } from './morse.js';

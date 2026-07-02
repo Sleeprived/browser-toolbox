@@ -21,22 +21,40 @@
   <main id="main" class="wrap">
     <noscript><div class="msg error">This tool needs JavaScript enabled.</div></noscript>
     <h1>Morse Code Studio</h1>
-    <p class="lead">Translate text to International Morse Code and back — then hear it, save it as audio, see it flash, or feel it buzz. Everything runs in your browser.</p>
+    <p class="lead">Translate between text and International Morse Code — type in either box and the other follows live. Then hear it, save it as audio, see it flash, or feel it buzz. Everything runs in your browser.</p>
 
     <div class="card">
-      <label for="morse-in">Input</label>
-      <textarea id="morse-in" class="mono" placeholder="Type text to encode — or paste Morse (. and -) to decode"></textarea>
-      <label for="morse-dir">Direction</label>
-      <select id="morse-dir">
+      <div class="duo">
+        <div>
+          <label for="morse-in">Text</label>
+          <textarea id="morse-in" class="mono" placeholder="Type text here &mdash; the Morse appears in the other box"></textarea>
+        </div>
+        <div>
+          <label for="morse-out">Morse</label>
+          <textarea id="morse-out" class="mono" placeholder="Type or paste Morse here (. - / and spaces) &mdash; the text appears in the other box"></textarea>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" type="button" id="morse-play-out">Play</button>
+        <button class="btn secondary" type="button" id="morse-stop-out">Stop</button>
+        <button class="btn secondary" type="button" id="morse-copy-text">Copy text</button>
+        <button class="btn secondary" type="button" id="morse-copy">Copy Morse</button>
+        <button class="btn secondary" type="button" id="morse-clear">Clear</button>
+      </div>
+      <p id="morse-skipped" class="lead hidden" aria-live="polite"></p>
+      <p id="morse-copied" class="lead hidden" aria-live="polite"></p>
+      <!-- Kept one release for update safety: a stale cached morse-ui.js /
+           tap-ui.js (pre-1.12) reads the direction select and throws without
+           it. Remove after 1.13. -->
+      <select id="morse-dir" class="hidden" aria-hidden="true" tabindex="-1">
         <option value="encode">Text &#8594; Morse</option>
         <option value="decode">Morse &#8594; Text</option>
       </select>
-      <p id="morse-skipped" class="lead hidden" aria-live="polite"></p>
     </div>
 
     <div class="card">
       <h2>Tap it in</h2>
-      <p class="lead">Tap the pad below &mdash; or turn on keyboard tapping and press the key: short tap = dot, long hold = dash. Pause briefly to end a letter, pause longer to start a new word. Press Esc to stop keyboard tapping. Your taps land in the input above as Morse.</p>
+      <p class="lead">Tap the pad below &mdash; or turn on keyboard tapping and press the key: short tap = dot, long hold = dash. Pause briefly to end a letter, pause longer to start a new word. Press Esc to stop keyboard tapping. Your taps land in the Morse box above, and the text box follows.</p>
       <button class="btn tap-pad" type="button" id="tap-pad">Tap here &mdash; hold longer for a dash</button>
       <div class="btn-row">
         <button class="btn secondary" type="button" id="tap-listen" aria-pressed="false">Start keyboard tapping</button>
@@ -56,6 +74,10 @@
       <p class="lead">You tapped: <span id="tap-morse" class="mono" aria-live="polite"></span></p>
       <p class="lead">Translation:</p>
       <pre class="out" id="tap-out" aria-live="polite"></pre>
+      <div class="btn-row">
+        <button class="btn" type="button" id="tap-play">Play tapped Morse</button>
+        <button class="btn secondary" type="button" id="tap-stop">Stop</button>
+      </div>
       <!-- Kept one release for update safety: a stale cached tap-ui.js
            (pre-1.11.1) writes the pending letter here and throws without it,
            wedging the pad. Remove after 1.12. -->
@@ -84,16 +106,6 @@
     </div>
 
     <div id="morse-error" class="msg error hidden" role="alert"></div>
-
-    <div class="card">
-      <h2>Output</h2>
-      <pre class="out" id="morse-out" aria-live="polite"></pre>
-      <div class="btn-row">
-        <button class="btn" type="button" id="morse-copy">Copy output</button>
-        <button class="btn secondary" type="button" id="morse-clear">Clear input &amp; output</button>
-      </div>
-      <p id="morse-copied" class="lead hidden" aria-live="polite"></p>
-    </div>
 
     <div class="card">
       <h2>Signal output</h2>

@@ -319,6 +319,11 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 .cf-hide-label input { width: auto; }
 
 /* ---- Morse Code Studio ---- */
+/* Two-way translate panes: side by side where there is room, stacked on
+   narrow screens (each pane insists on ~260px before wrapping). */
+.duo { display: flex; flex-wrap: wrap; gap: 12px; }
+.duo > * { flex: 1 1 260px; min-width: 0; }
+
 /* The flasher toggles its background instantly (no transition) so it stays in
    sync with the timeline; the control is also hard-disabled in JS under
    reduced motion. */

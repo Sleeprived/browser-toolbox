@@ -393,23 +393,22 @@ describe('image UI', () => {
 });
 
 describe('morse UI', () => {
-  it('imports without Web Audio / vibrate / matchMedia and encodes live', async () => {
+  it('imports without Web Audio / vibrate / matchMedia and translates text to Morse live', async () => {
     loadBody('morse.html');
     await import('../src/morse/morse-ui.js');
-    const inEl = document.getElementById('morse-in');
-    inEl.value = 'HELLO';
-    inEl.dispatchEvent(new window.Event('input'));
-    expect(document.getElementById('morse-out').textContent).toBe('.... . .-.. .-.. ---');
+    const textEl = document.getElementById('morse-in');
+    textEl.value = 'HELLO';
+    textEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('morse-out').value).toBe('.... . .-.. .-.. ---');
   });
 
-  it('decodes Morse back to text when direction is flipped', async () => {
+  it('typing Morse in the Morse pane fills the text pane live', async () => {
     loadBody('morse.html');
     await import('../src/morse/morse-ui.js');
-    document.getElementById('morse-dir').value = 'decode';
-    const inEl = document.getElementById('morse-in');
-    inEl.value = '.... ..';
-    inEl.dispatchEvent(new window.Event('input'));
-    expect(document.getElementById('morse-out').textContent).toBe('HI');
+    const codeEl = document.getElementById('morse-out');
+    codeEl.value = '.... ..';
+    codeEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('morse-in').value).toBe('HI');
   });
 
   it('disables vibrate when navigator.vibrate is unavailable (jsdom)', async () => {
@@ -1018,9 +1017,8 @@ describe('morse tap keyer UI', () => {
       vi.advanceTimersByTime(80);                    // short press = dot
       pad.dispatchEvent(new window.Event('pointerup'));
       vi.advanceTimersByTime(2000);                  // letter-gap flush timer
-      expect(document.getElementById('morse-in').value.trim()).toBe('.');
-      expect(document.getElementById('morse-out').textContent).toBe('E');
-      expect(document.getElementById('morse-dir').value).toBe('decode');
+      expect(document.getElementById('morse-out').value.trim()).toBe('.');
+      expect(document.getElementById('morse-in').value).toBe('E');
     } finally {
       vi.useRealTimers();
     }
@@ -1044,21 +1042,26 @@ describe('morse tap keyer UI', () => {
     loadBody('morse.html');
     await import('../src/morse/morse-ui.js');
     await import('../src/morse/tap-ui.js');
-    const inEl = document.getElementById('morse-in');
-    inEl.value = '... --- ';
+    const codeEl = document.getElementById('morse-out');
+    codeEl.value = '... --- ';
     document.getElementById('tap-undo').dispatchEvent(new window.Event('click'));
-    expect(inEl.value).toBe('... ');
+    expect(codeEl.value).toBe('... ');
   });
 
-  it('taps still commit when newer page elements are missing (stale cached HTML)', async () => {
+  it('taps still commit on the pre-1.12 page (Morse pane is a <pre>, newer controls absent)', async () => {
     // A PWA update can briefly pair a new module with the PREVIOUS page still
-    // in the SW cache (stale-while-revalidate). New elements are a nicety;
-    // keying must survive their absence — a first-tap throw leaves pressed
-    // wedged true and kills the pad until reload.
+    // in the SW cache (stale-while-revalidate). On that page the Morse pane
+    // is a read-only <pre> and the newer buttons don't exist; keying must
+    // survive both — a first-tap throw leaves pressed wedged true and kills
+    // the pad until reload.
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     try {
       loadBody('morse.html');
-      for (const id of ['tap-morse', 'tap-out', 'tap-clear', 'morse-clear']) {
+      const oldOut = document.createElement('pre');
+      oldOut.id = 'morse-out';
+      document.getElementById('morse-out').replaceWith(oldOut);
+      for (const id of ['morse-play-out', 'morse-stop-out', 'morse-copy-text',
+        'tap-play', 'tap-stop', 'tap-morse', 'tap-out', 'tap-clear', 'morse-clear']) {
         document.getElementById(id).remove();
       }
       await import('../src/morse/morse-ui.js');
@@ -1068,8 +1071,8 @@ describe('morse tap keyer UI', () => {
       vi.advanceTimersByTime(80);                    // short press = dot
       pad.dispatchEvent(new window.Event('pointerup'));
       vi.advanceTimersByTime(2000);                  // letter-gap flush timer
-      expect(document.getElementById('morse-in').value.trim()).toBe('.');
-      expect(document.getElementById('morse-out').textContent).toBe('E');
+      expect(oldOut.textContent.trim()).toBe('.');
+      expect(document.getElementById('morse-in').value).toBe('E');
     } finally {
       vi.useRealTimers();
     }
@@ -1086,7 +1089,7 @@ describe('morse tap keyer UI', () => {
       await import('../src/morse/morse-ui.js');
       await import('../src/morse/tap-ui.js');
       const pad = document.getElementById('tap-pad');
-      const inEl = document.getElementById('morse-in');
+      const codeEl = document.getElementById('morse-out');
 
       pad.dispatchEvent(new window.Event('pointerdown'));
       vi.advanceTimersByTime(80);                      // dot; flush timer ~228 ms out
@@ -1102,7 +1105,7 @@ describe('morse tap keyer UI', () => {
       pad.dispatchEvent(new window.Event('pointerup'));
       vi.advanceTimersByTime(2000);                    // flush the second dot
 
-      expect(inEl.value.trim()).toBe('. / .');         // was '/ . .' before the fix
+      expect(codeEl.value.trim()).toBe('. / .');       // was '/ . .' before the fix
       expect(document.getElementById('tap-morse').textContent.trim()).toBe('. / .');
     } finally {
       vi.useRealTimers();
@@ -1120,11 +1123,119 @@ describe('morse tap keyer UI', () => {
       vi.advanceTimersByTime(80);                    // short press = dot
       pad.dispatchEvent(new window.KeyboardEvent('keyup', { code: 'Enter' }));
       vi.advanceTimersByTime(2000);                  // letter-gap flush timer
-      expect(document.getElementById('morse-in').value.trim()).toBe('.');
-      expect(document.getElementById('morse-out').textContent).toBe('E');
+      expect(document.getElementById('morse-out').value.trim()).toBe('.');
+      expect(document.getElementById('morse-in').value).toBe('E');
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('a stray tap only appends a letter — undo restores the original text', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const textEl = document.getElementById('morse-in');
+      const codeEl = document.getElementById('morse-out');
+      textEl.value = 'Hello';
+      textEl.dispatchEvent(new window.Event('input'));
+      expect(codeEl.value).toBe('.... . .-.. .-.. ---');
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      vi.advanceTimersByTime(80);                    // short press = dot
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);                  // letter-gap flush timer
+      // The tap lands in the Morse pane as one extra letter — nothing garbles.
+      expect(codeEl.value.trim()).toBe('.... . .-.. .-.. --- .');
+      expect(textEl.value).toBe('HELLOE');
+      // Undo restores both panes.
+      document.getElementById('tap-undo').dispatchEvent(new window.Event('click'));
+      expect(codeEl.value.trim()).toBe('.... . .-.. .-.. ---');
+      expect(textEl.value).toBe('HELLO');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a pad press drops focus from the input (mobile scroll-to-top guard)', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const inEl = document.getElementById('morse-in');
+      inEl.focus();
+      expect(document.activeElement).toBe(inEl);
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      expect(document.activeElement).not.toBe(inEl);
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Play tapped Morse and its Stop are wired and safe without Web Audio', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      loadBody('morse.html');
+      await import('../src/morse/morse-ui.js');
+      await import('../src/morse/tap-ui.js');
+      const pad = document.getElementById('tap-pad');
+      pad.dispatchEvent(new window.Event('pointerdown'));
+      vi.advanceTimersByTime(80);
+      pad.dispatchEvent(new window.Event('pointerup'));
+      vi.advanceTimersByTime(2000);
+      // No AudioContext in jsdom: clicking must not throw, just do nothing.
+      document.getElementById('tap-play').dispatchEvent(new window.Event('click'));
+      document.getElementById('tap-stop').dispatchEvent(new window.Event('click'));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('morse translate card controls', () => {
+  it('the panes sit above the tap card with their own Play/Stop', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    const out = document.getElementById('morse-out');
+    const pad = document.getElementById('tap-pad');
+    expect(out.compareDocumentPosition(pad) & window.Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const play = document.getElementById('morse-play-out');
+    const stop = document.getElementById('morse-stop-out');
+    expect(play).not.toBeNull();
+    expect(stop.disabled).toBe(true); // nothing playing yet
+    // No AudioContext in jsdom: clicking must not throw.
+    document.getElementById('morse-in').value = 'HI';
+    document.getElementById('morse-in').dispatchEvent(new window.Event('input'));
+    play.dispatchEvent(new window.Event('click'));
+  });
+
+  it('Clear empties both panes and the tap transcript', async () => {
+    loadBody('morse.html');
+    await import('../src/morse/morse-ui.js');
+    await import('../src/morse/tap-ui.js');
+    const textEl = document.getElementById('morse-in');
+    textEl.value = 'HI';
+    textEl.dispatchEvent(new window.Event('input'));
+    document.getElementById('morse-clear').dispatchEvent(new window.Event('click'));
+    expect(textEl.value).toBe('');
+    expect(document.getElementById('morse-out').value).toBe('');
+  });
+
+  it('morse-ui still loads when the newer controls are missing (stale cached HTML)', async () => {
+    loadBody('morse.html');
+    document.getElementById('morse-play-out').remove();
+    document.getElementById('morse-stop-out').remove();
+    document.getElementById('morse-copy-text').remove();
+    await import('../src/morse/morse-ui.js');
+    const inEl = document.getElementById('morse-in');
+    inEl.value = 'HI';
+    inEl.dispatchEvent(new window.Event('input'));
+    expect(document.getElementById('morse-out').value).toBe('.... ..');
   });
 });
 

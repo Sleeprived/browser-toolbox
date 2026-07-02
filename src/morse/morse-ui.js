@@ -4,17 +4,29 @@ import * as player from './player.js';
 
 const $ = (id) => document.getElementById(id);
 
-const inEl = $('morse-in');
-const dirEl = $('morse-dir');
-const outEl = $('morse-out');
+// Two-way translate panes: whichever box the user edits is the source and the
+// other follows. Programmatic writes don't fire 'input', so no update loops.
+const textEl = $('morse-in');
+const codeEl = $('morse-out');
 const errorEl = $('morse-error');
 const skippedEl = $('morse-skipped');
 const copyBtn = $('morse-copy');
+const copyTextBtn = $('morse-copy-text'); // may be absent on a stale cached page
 const clearBtn = $('morse-clear');
 const copiedEl = $('morse-copied');
 
+// On a stale cached page (pre-1.12) the Morse pane is still a read-only <pre>;
+// read/write through a shim so this module works on either markup.
+const codeIsField = 'value' in codeEl;
+const getCode = () => (codeIsField ? codeEl.value : codeEl.textContent);
+const setCode = (v) => { if (codeIsField) codeEl.value = v; else codeEl.textContent = v; };
+
 const playBtn = $('morse-play');
 const stopBtn = $('morse-stop');
+// Twins of Play/Stop up in the translate card (may be absent on a stale
+// cached page — every use is guarded).
+const playOutBtn = $('morse-play-out');
+const stopOutBtn = $('morse-stop-out');
 const downloadBtn = $('morse-download');
 const flashBtn = $('morse-flash');
 const vibrateBtn = $('morse-vibrate');
@@ -28,8 +40,8 @@ const cwpmVal = $('morse-cwpm-val');
 const toneEl = $('morse-tone');
 const toneVal = $('morse-tone-val');
 
-// The Morse string the signal-output controls act on: the output when encoding,
-// the (raw) input when decoding.
+// The Morse string the signal-output controls act on: whatever the Morse pane
+// holds — encoded from the text pane, or typed/tapped into it directly.
 let currentMorse = '';
 
 function readSettings() {
@@ -43,8 +55,8 @@ function setFlasher(on) {
 }
 
 function setPlaying(playing) {
-  playBtn.disabled = playing;
-  stopBtn.disabled = !playing;
+  for (const b of [playBtn, playOutBtn]) { if (b) b.disabled = playing; }
+  for (const b of [stopBtn, stopOutBtn]) { if (b) b.disabled = !playing; }
 }
 
 // Playback progress bar: audio is scheduled ahead on the Web Audio clock, so
@@ -64,7 +76,8 @@ function startProgress(totalMs) {
   }, 100);
 }
 
-function update() {
+// Any edit invalidates whatever signal is playing and any stale messages.
+function resetSignals() {
   copiedEl.classList.add('hidden');
   player.stopAll();
   setFlasher(false);
@@ -72,26 +85,30 @@ function update() {
   stopProgress();
   errorEl.classList.add('hidden');
   skippedEl.classList.add('hidden');
+}
 
-  const text = inEl.value;
+function syncFromText() {
+  resetSignals();
+  const text = textEl.value;
   if (text === '') {
-    outEl.textContent = '';
+    setCode('');
     currentMorse = '';
     return;
   }
-
-  if (dirEl.value === 'decode') {
-    outEl.textContent = morseToText(text); // textContent — XSS-safe
-    currentMorse = text;
-  } else {
-    const { code, skipped } = textToMorse(text);
-    outEl.textContent = code;
-    currentMorse = code;
-    if (skipped.length) {
-      skippedEl.textContent = `Skipped (no Morse equivalent): ${skipped.join(' ')}`;
-      skippedEl.classList.remove('hidden');
-    }
+  const { code, skipped } = textToMorse(text);
+  setCode(code);
+  currentMorse = code;
+  if (skipped.length) {
+    skippedEl.textContent = `Skipped (no Morse equivalent): ${skipped.join(' ')}`;
+    skippedEl.classList.remove('hidden');
   }
+}
+
+function syncFromCode() {
+  resetSignals();
+  const code = getCode();
+  currentMorse = code;
+  textEl.value = morseToText(code);
 }
 
 // Hard ceiling on rendered signal duration. A long paste at low WPM can build a
@@ -122,7 +139,7 @@ function outputTimeline(over) {
   return tl;
 }
 
-playBtn.addEventListener('click', () => {
+function startPlayback() {
   const tl = outputTimeline();
   if (!tl) return;
   const ok = player.playAudio(tl, {
@@ -131,11 +148,23 @@ playBtn.addEventListener('click', () => {
   });
   setPlaying(ok);
   if (ok) startProgress(tl.totalMs);
-});
+}
+playBtn.addEventListener('click', startPlayback);
+playOutBtn?.addEventListener('click', startPlayback);
 
-stopBtn.addEventListener('click', () => {
+function stopPlayback() {
   player.stopAll();
   setFlasher(false);
+  setPlaying(false);
+  stopProgress();
+}
+stopBtn.addEventListener('click', stopPlayback);
+stopOutBtn?.addEventListener('click', stopPlayback);
+
+// The tap card's Play (tap-ui.js) preempts this card's audio via stopAll(),
+// which suppresses the superseded oscillator's onEnd — it announces the
+// takeover with this event so Play/Stop and the progress bar reset here.
+document.addEventListener('morse-playback-reset', () => {
   setPlaying(false);
   stopProgress();
 });
@@ -167,22 +196,24 @@ vibrateBtn.addEventListener('click', () => {
   stopProgress();
 });
 
-// The output is derived from the input, so clearing means clearing the input;
-// the dispatched 'input' event resets everything downstream (output, signal
-// state, and the tap card's transcript). (Optional chaining: the button may
-// be absent on a stale cached page.)
+// Clear both panes; the dispatched 'input' event resets everything downstream
+// (signal state and the tap card's transcript). (Optional chaining: the
+// button may be absent on a stale cached page.)
 clearBtn?.addEventListener('click', () => {
-  inEl.value = '';
-  inEl.dispatchEvent(new Event('input'));
+  textEl.value = '';
+  setCode('');
+  codeEl.dispatchEvent(new Event('input'));
 });
 
-copyBtn.addEventListener('click', async () => {
-  if (!outEl.textContent) return;
+async function copyOut(value) {
+  if (!value) return;
   let ok = false;
-  try { await navigator.clipboard.writeText(outEl.textContent); ok = true; } catch { ok = false; }
+  try { await navigator.clipboard.writeText(value); ok = true; } catch { ok = false; }
   copiedEl.textContent = ok ? 'Copied to clipboard' : 'Press Ctrl+C to copy';
   copiedEl.classList.remove('hidden');
-});
+}
+copyBtn.addEventListener('click', () => copyOut(getCode()));
+copyTextBtn?.addEventListener('click', () => copyOut(textEl.value));
 
 // Range readouts.
 function bindRange(el, valEl, fmt) {
@@ -194,10 +225,8 @@ bindRange(wpmEl, wpmVal);
 bindRange(cwpmEl, cwpmVal);
 bindRange(toneEl, toneVal, (v) => `${v} Hz`);
 
-for (const el of [inEl, dirEl]) {
-  el.addEventListener('input', update);
-  el.addEventListener('change', update);
-}
+textEl.addEventListener('input', syncFromText);
+codeEl.addEventListener('input', syncFromCode);
 
 // Capability-gate the output controls (also enforced inside player.js).
 setPlaying(false);
@@ -221,4 +250,4 @@ function haltOutput() {
 window.addEventListener('pagehide', haltOutput);
 document.addEventListener('visibilitychange', () => { if (document.hidden) haltOutput(); });
 
-update();
+syncFromText();

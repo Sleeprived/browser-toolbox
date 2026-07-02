@@ -2,18 +2,35 @@
 // The on-screen pad always works; the keyboard key (rebindable, Space by
 // default) is captured only while "keyboard tapping" is on, so it can't
 // hijack scrolling or typing the rest of the time. Committed letters are
-// appended to the main input box and an 'input' event is dispatched — the
-// existing decode pipeline in morse-ui.js does the rest.
+// appended to the Morse pane and an 'input' event is dispatched — the
+// two-way sync in morse-ui.js does the rest.
 
 import { createKeyer } from './keyer.js';
 import { morseToText } from './morse.js';
+import { buildTimeline } from './timing.js';
 import * as player from './player.js';
 
 const $ = (id) => document.getElementById(id);
 
-const inEl = $('morse-in');
-const dirEl = $('morse-dir');
+const textEl = $('morse-in');
+const codeEl = $('morse-out'); // taps land here (the Morse pane)
 const toneEl = $('morse-tone');
+
+// On a stale cached page (pre-1.12) the Morse pane is still a <pre>; the
+// shim keeps taps working on either markup.
+const codeIsField = 'value' in codeEl;
+const getCode = () => (codeIsField ? codeEl.value : codeEl.textContent);
+const setCode = (v) => { if (codeIsField) codeEl.value = v; else codeEl.textContent = v; };
+
+// Both panes are rewritten programmatically on every tap; if one of them
+// still holds focus from an earlier typing session, mobile browsers scroll
+// the focused box (at the very top of the page) back into view mid-tap —
+// yanking the pad out from under the user's finger. Tapping is not typing:
+// drop that focus.
+function blurPanes() {
+  const active = document.activeElement;
+  if (active === textEl || active === codeEl) active.blur();
+}
 
 const padBtn = $('tap-pad');
 const listenBtn = $('tap-listen');
@@ -26,6 +43,10 @@ const adaptedEl = $('tap-wpm-adapted');
 const beepEl = $('tap-beep');
 const tapMorseEl = $('tap-morse');
 const tapOutEl = $('tap-out');
+const tapPlayBtn = $('tap-play');
+const tapStopBtn = $('tap-stop');
+const sigWpmEl = $('morse-wpm');
+const sigCwpmEl = $('morse-cwpm');
 
 const keyer = createKeyer({ wpm: Number(wpmEl.value) });
 const now = () => Date.now();
@@ -47,15 +68,15 @@ function syncButtons() {
 }
 
 function append(token) {
-  const v = inEl.value;
-  inEl.value = (v && !/\s$/.test(v) ? `${v} ` : v) + `${token} `;
-  inEl.dispatchEvent(new Event('input'));
+  const v = getCode();
+  setCode((v && !/\s$/.test(v) ? `${v} ` : v) + `${token} `);
+  codeEl.dispatchEvent(new Event('input'));
 }
 
 // In-card mirror of what was actually TAPPED (committed tokens plus the
-// in-progress letter) and its translation, so nobody has to scroll to the
-// output while keying. Deliberately NOT a mirror of the input box: pasted or
-// hand-typed content must never be presented as the user's taps.
+// in-progress letter) and its translation, so nobody has to scroll while
+// keying. Deliberately NOT a mirror of the Morse pane: pasted or hand-typed
+// content must never be presented as the user's taps.
 const tapped = [];
 
 function renderTapView() {
@@ -84,12 +105,10 @@ function pressStart() {
   if (pressed) return;
   pressed = true;
   clearFlushTimer();
-  if (dirEl.value !== 'decode') {
-    dirEl.value = 'decode';
-    dirEl.dispatchEvent(new Event('change'));
-  }
-  // Commit first: append() triggers update() -> player.stopAll(), which would
-  // kill a tone started before it. The tone starts only after the dispatch.
+  blurPanes(); // mobile scroll-to-top guard — see blurPanes()
+  // Commit first: append() triggers the pane sync -> player.stopAll(), which
+  // would kill a tone started before it. The tone starts only after the
+  // dispatch.
   applyResult(keyer.down(now()));
   padBtn.classList.add('held');
   if (beepEl.checked) player.startTone(Number(toneEl.value));
@@ -156,7 +175,7 @@ document.addEventListener('keyup', (e) => {
 listenBtn.addEventListener('click', () => {
   if (listening) { stopListening(); return; }
   listening = true;
-  inEl.blur(); // the tap key must not also type into the box
+  blurPanes(); // the tap key must not also type into a box
   syncButtons();
 });
 
@@ -196,11 +215,11 @@ padBtn.addEventListener('keyup', (e) => {
 });
 
 undoBtn.addEventListener('click', () => {
-  const tokens = inEl.value.trim().split(/\s+/).filter(Boolean);
+  const tokens = getCode().trim().split(/\s+/).filter(Boolean);
   if (!tokens.length) return;
   const removed = tokens.pop();
-  inEl.value = tokens.length ? `${tokens.join(' ')} ` : '';
-  inEl.dispatchEvent(new Event('input'));
+  setCode(tokens.length ? `${tokens.join(' ')} ` : '');
+  codeEl.dispatchEvent(new Event('input'));
   // Keep the tap mirror honest: if the undone token was the last tapped one,
   // drop it from the mirror too.
   if (tapped.length && tapped[tapped.length - 1] === removed) {
@@ -209,7 +228,27 @@ undoBtn.addEventListener('click', () => {
   }
 });
 
-// Reset the tap mirror only — the taps already committed to the input stay.
+// Hear the tapped Morse right in this card, using the Signal output card's
+// speed/tone settings. player.playAudio() preempts the translate card's Play
+// without firing its onEnd, so announce the takeover and morse-ui resets its
+// buttons. No duration cap needed: the timeline is bounded by how long a
+// human can physically tap. (Optional chaining throughout: these controls
+// may be absent on a stale cached page.)
+tapPlayBtn?.addEventListener('click', () => {
+  const morse = tapped.join(' ');
+  if (!morse) return;
+  const wpm = Number(sigWpmEl?.value) || 20;
+  const charWpm = Math.max(wpm, Number(sigCwpmEl?.value) || wpm);
+  document.dispatchEvent(new Event('morse-playback-reset'));
+  player.playAudio(buildTimeline(morse, { wpm, charWpm }), { freq: Number(toneEl?.value) || 600 });
+});
+
+tapStopBtn?.addEventListener('click', () => {
+  player.stopAll();
+  document.dispatchEvent(new Event('morse-playback-reset'));
+});
+
+// Reset the tap mirror only — the taps already committed to the Morse pane stay.
 // Any letter still pending in the keyer is discarded with it. (Optional
 // chaining: the button may be absent on a stale cached page.)
 clearBtn?.addEventListener('click', () => {
@@ -219,25 +258,10 @@ clearBtn?.addEventListener('click', () => {
   renderTapView();
 });
 
-// Abandon an in-flight tap when the user switches away from decode: letting
-// the flush timer commit it later would append Morse into text that is about
-// to be ENCODED. (pressStart's own switch TO decode returns early here.)
-dirEl.addEventListener('change', () => {
-  if (dirEl.value === 'decode') return;
-  if (pressed) {
-    pressed = false;
-    player.stopTone();
-    padBtn.classList.remove('held');
-  }
-  clearFlushTimer();
-  keyer.finish(); // result ignored: discard, don't commit
-  renderTapView();
-});
-
-// An emptied input (Clear button, select-all + delete) is a fresh start — a
-// surviving tap transcript would show taps that are no longer anywhere.
-inEl.addEventListener('input', () => {
-  if (tapped.length && inEl.value.trim() === '') {
+// An emptied Morse pane (Clear button, select-all + delete) is a fresh start —
+// a surviving tap transcript would show taps that are no longer anywhere.
+codeEl.addEventListener('input', () => {
+  if (tapped.length && getCode().trim() === '') {
     tapped.length = 0;
     renderTapView();
   }
